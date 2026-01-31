@@ -14,7 +14,8 @@ All hooks live in `src/components/canvas/hooks/` and are composed inside `Planne
 | `useImages` | `useImages.ts` | Load background image, add overlay images |
 | `useCleanup` | `useCleanup.ts` | Cleanup mode: hide objects, draw masks, add bg images |
 | `useCanvasEvents` | `useCanvasEvents.ts` | Central event dispatcher: routes mouse/object events by mode |
-| `useKeyboardShortcuts` | `useKeyboardShortcuts.ts` | Delete/Backspace and Escape key handling |
+| `useKeyboardShortcuts` | `useKeyboardShortcuts.ts` | Delete/Backspace, Escape, undo/redo key handling |
+| `useHistory` | `useHistory.ts` | Snapshot-based undo/redo with image deduplication |
 
 ## Hook Composition
 
@@ -32,8 +33,10 @@ PlannerCanvas
   |-- useImages(fabricCanvasRef, allFabricRefsRef as Map<number, ImageFabricRefs>)
   |-- useCleanup(fabricCanvasRef, allFabricRefsRef as Map<number, MaskFabricRefs | ImageFabricRefs>)
   |
+  |-- useHistory(fabricCanvasRef, { getFabricState, restoreFromSnapshot })
+  |
   |-- useCanvasEvents(fabricCanvasRef, { ...all handler callbacks })
-  |-- useKeyboardShortcuts(fabricCanvasRef, { cancelCalibration, cancelLineDrawing, deleteSelected })
+  |-- useKeyboardShortcuts(fabricCanvasRef, { cancelCalibration, cancelLineDrawing, deleteSelected, undo, redo })
 ```
 
 All hooks that manage objects receive `fabricCanvasRef` and a typed cast of `allFabricRefsRef`.
@@ -133,13 +136,34 @@ Registers handlers for:
 
 ### useKeyboardShortcuts
 
-**Params:** `fabricCanvasRef, { cancelCalibration, cancelLineDrawing, deleteSelected }`
+**Params:** `fabricCanvasRef, { cancelCalibration, cancelLineDrawing, deleteSelected, undo, redo }`
 **Returns:** void (registers/unregisters keydown listener)
+
+All shortcuts are skipped when an `<input>` or `<textarea>` has focus.
 
 | Key | Action |
 |---|---|
 | `Delete` / `Backspace` | Delete selected objects |
-| `Escape` | Cancel current mode (calibration, line drawing) |
+| `Escape` | Cancel current mode (calibration, line drawing, drawing-mask) |
+| `Ctrl+Z` / `Cmd+Z` | Undo |
+| `Ctrl+Shift+Z` / `Cmd+Shift+Z` | Redo |
+| `Ctrl+Y` / `Cmd+Y` | Redo (alternate) |
+
+### useHistory
+
+**Params:** `{ getFabricState, restoreFromSnapshot }`
+**Returns:** `{ captureSnapshot, undo, redo, resetHistory, isRestoringRef, managerRef }`
+
+| Function | Description |
+|---|---|
+| `captureSnapshot()` | Captures paired Zustand + Fabric state. Only runs in `normal`/`cleanup` modes; skipped when `isRestoringRef` is true. Registers image data in IDB pool for deduplication. |
+| `undo()` | Decrements history pointer, restores previous snapshot. Sets `isRestoringRef` during restore to prevent nested captures. |
+| `redo()` | Increments history pointer, restores next snapshot. Same guarding as undo. |
+| `resetHistory()` | Clears history stack and IDB image pool. Called on project load/import. |
+| `isRestoringRef` | `React.MutableRefObject<boolean>` -- true during restore, prevents snapshot capture loops |
+| `managerRef` | `React.MutableRefObject<HistoryManager>` -- direct access to the `HistoryManager` instance |
+
+Backed by `HistoryManager` (`lib/history.ts`): pure TypeScript class with a 50-entry snapshot stack, pointer-based navigation, and IDB-backed image deduplication with LRU cache (3 entries).
 
 ## PlannerCanvasHandle
 
@@ -172,6 +196,9 @@ interface PlannerCanvasHandle {
   moveObjectUp: (id: number) => void
   moveObjectDown: (id: number) => void
   selectedObjectId: () => number | null
+  // History
+  undo: () => Promise<void>
+  redo: () => Promise<void>
   // Storage
   save: () => Promise<void>
   load: () => Promise<void>

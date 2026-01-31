@@ -112,6 +112,39 @@ type FabricRefs =
   | ImageFabricRefs
 ```
 
+## History Types
+
+```typescript
+// Fingerprint key for deduplicated image data: "img_${length}_${first64}_${last64}"
+type ImageRef = string
+
+interface StoreSnapshot {
+  pixelsPerMeter: number | null
+  backgroundImageRef: ImageRef | null  // ref to deduplicated image in IDB pool
+  objects: PlannerObject[]             // deep clone of store Map values
+  objectIdCounter: number
+}
+
+interface FabricObjectSnapshot {
+  id: number
+  type: ObjectType
+  fabricState: Record<string, unknown>  // extracted from getFabricState()
+}
+
+interface HistorySnapshot {
+  storeSnapshot: StoreSnapshot
+  fabricSnapshots: FabricObjectSnapshot[]
+  timestamp: number  // Date.now()
+}
+
+interface HistoryState {
+  canUndo: boolean
+  canRedo: boolean
+  undoCount: number   // pointer position
+  redoCount: number   // stack.length - 1 - pointer
+}
+```
+
 ## Serialization Types
 
 ### SerializedObject (Discriminated Union)
@@ -174,14 +207,27 @@ type SerializedObject =
 ### SerializedProject
 
 ```typescript
-interface SerializedProject {
-  version: number                // Always 2
+// Base type (covers both v2 and v3 shapes)
+interface SerializedProjectBase {
+  version: number
   pixelsPerMeter: number | null
   backgroundImage: string | null // Base64 data URL of main background
   savedAt: string                // ISO 8601 timestamp
   objects: SerializedObject[]
   id?: string                    // Present when stored in IndexedDB
 }
+
+// V3 adds optional metadata
+interface SerializedProjectV3 extends SerializedProjectBase {
+  version: 3
+  metadata?: {
+    appVersion?: string          // e.g. '1.0.0'
+    exportedFrom?: string        // e.g. 'outdoor-planner-next'
+  }
+}
+
+// Union type used throughout the codebase
+type SerializedProject = SerializedProjectBase
 ```
 
 ## Calibration State
@@ -210,7 +256,8 @@ interface PlannerState {
   selectedColor: string
   selectedLineColor: string
   lineWidth: number
-  autoSaveEnabled: boolean
+  autoSaveEnabled: boolean              // default: true (always on)
+  historyState: HistoryState            // undo/redo availability
   statusMessage: string
   calibrationPixelLength: number | null
   showCalibrationInput: boolean
@@ -229,6 +276,7 @@ interface PlannerActions {
   setSelectedLineColor: (color: string) => void
   setLineWidth: (w: number) => void
   setAutoSaveEnabled: (enabled: boolean) => void
+  setHistoryState: (state: HistoryState) => void
   setStatusMessage: (msg: string) => void
   setCalibrationPixelLength: (len: number | null) => void
   setShowCalibrationInput: (show: boolean) => void

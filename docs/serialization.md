@@ -2,16 +2,20 @@
 
 Defined in `src/components/canvas/utils/serialization.ts` and `src/lib/storage/`.
 
-## SerializedProject Format
+## SerializedProject Format (v3)
 
 ```typescript
 {
-  version: 2,                          // Format version
+  version: 3,                          // Format version (backward-compatible with v2)
   pixelsPerMeter: number | null,       // Scale (null if uncalibrated)
   backgroundImage: string | null,      // Base64 data URL
   savedAt: string,                     // ISO 8601 timestamp
   objects: SerializedObject[],         // All objects
-  id?: string                          // IndexedDB key (only when stored)
+  id?: string,                         // IndexedDB key (only when stored)
+  metadata?: {                         // New in v3
+    appVersion?: string,               // e.g. '1.0.0'
+    exportedFrom?: string              // e.g. 'outdoor-planner-next'
+  }
 }
 ```
 
@@ -72,7 +76,16 @@ Defined in `src/components/canvas/utils/serialization.ts` and `src/lib/storage/`
 
 ## Backward Compatibility
 
-The format uses `version: 2`, which is compatible with the original vanilla JavaScript version of the app. The serialized JSON structure is the same, so projects exported from the vanilla app can be imported into this Next.js version and vice versa.
+The current format is version 3. V2 projects (from the vanilla JavaScript app) are transparently migrated on load/import via `migrateProject()`:
+
+```typescript
+function migrateProject(data: SerializedProject): SerializedProjectV3
+```
+
+- If the data is already v3 with `metadata`, it is returned as-is.
+- Otherwise, `version` is set to `3` and `metadata: { exportedFrom: 'outdoor-planner-next' }` is added.
+
+All load paths (IndexedDB, JSON import) return v3 data after migration. Exported JSON files are always v3.
 
 ## Export Flow
 
@@ -85,7 +98,7 @@ User clicks Save or Export
       --> For each object:
         --> getFabricState(id) -- extracts left/top/scaleX/scaleY/angle + type-specific fields
         --> serializeObject(obj, fabricState) -- merges metadata + Fabric state
-      --> Returns SerializedProject { version: 2, ... }
+      --> Returns SerializedProject { version: 3, metadata, ... }
     --> saveToIDB(data) -- IndexedDB write
        OR downloadProjectAsJson(data) -- triggers browser download
 ```
@@ -119,13 +132,33 @@ User clicks Load or Import
 
 ### IndexedDB (`lib/storage/indexeddb.ts`)
 
+Database: `OutdoorPlannerDB`, `DB_VERSION = 2`.
+
+**Object stores:**
+
+| Store | Purpose |
+|---|---|
+| `projects` | Saved project data (key: `'outdoor-planner-project'`) |
+| `image-pool` | Deduplicated image data for undo/redo history |
+
+**Project functions:**
+
 | Function | Description |
 |---|---|
-| `openDatabase()` | Opens `OutdoorPlannerDB` v1, auto-creates `projects` object store |
+| `openDatabase()` | Opens DB v2, creates `projects` and `image-pool` stores on upgrade |
 | `saveProject(data)` | Stores project with key `'outdoor-planner-project'` |
-| `loadProject()` | Retrieves saved project or `null` |
+| `loadProject()` | Retrieves saved project, applies `migrateProject()`, or returns `null` |
 | `clearProject()` | Deletes saved project |
 | `checkProjectExists()` | Returns project data or `null` (with error handling) |
+
+**Image pool functions:**
+
+| Function | Description |
+|---|---|
+| `saveImageData(ref, data)` | Stores image data in `image-pool` by fingerprint key |
+| `loadImageData(ref)` | Retrieves image data by fingerprint, or `null` |
+| `deleteImageData(ref)` | Removes image data by fingerprint |
+| `clearImagePool()` | Clears entire `image-pool` store |
 
 ### JSON Export (`lib/storage/json-export.ts`)
 
@@ -136,7 +169,17 @@ User clicks Load or Import
 
 ### Auto-Save
 
+- Always on (`autoSaveEnabled` defaults to `true`, no toggle in UI)
 - Triggered after object create/modify/delete events
 - Debounced with `AUTOSAVE_DEBOUNCE_MS` (2000ms)
-- Only active when `autoSaveEnabled` is true
+- Wrapped in try/catch; sets status message on success or failure
+- `beforeunload` handler warns if unsaved changes exist
 - Writes to IndexedDB using the same `saveProject()` function
+
+### History Image Pool
+
+The undo/redo system stores image-heavy snapshots efficiently:
+
+- **Deduplication**: each unique image is stored once in the IDB `image-pool` store, referenced by a fingerprint (`img_${length}_${first64}_${last64}`).
+- **Reference counting**: `HistoryManager` tracks how many snapshots reference each image. When a snapshot is evicted (stack exceeds 50 entries) or the redo branch is truncated, images with zero references are deleted from IDB.
+- **LRU cache**: the 3 most recently accessed images are kept in memory (`IMAGE_LRU_SIZE = 3`) to avoid IDB reads during rapid undo/redo.

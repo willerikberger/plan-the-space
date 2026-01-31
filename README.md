@@ -11,10 +11,12 @@ Design your garden and driveway layout to scale using a canvas-based planning to
 - **Shapes** -- named rectangles with configurable dimensions (meters), colors, and labels
 - **Distance lines** -- draw lines snapped to 45-degree increments with auto-calculated meter lengths
 - **Cleanup mode** -- draw mask rectangles over areas, then layer additional background images for compositing
-- **Save / Load** -- persist projects in IndexedDB with optional auto-save
-- **JSON import / export** -- download and restore projects as `.json` files (compatible with v2 vanilla app format)
+- **Undo / Redo** -- Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) with 50-entry history stack
+- **Save / Load** -- persist projects in IndexedDB with always-on auto-save
+- **JSON import / export** -- download and restore projects as `.json` files (v3 format, backward-compatible with v2)
 - **Pan and zoom** -- alt-drag or click empty space to pan; scroll wheel to zoom (0.1x--10x)
 - **Overlay images** -- add extra images on top of the background, scaled and repositionable
+- **Keyboard shortcuts** -- Delete/Backspace to remove, Escape to cancel, Ctrl+Z/Ctrl+Shift+Z for undo/redo
 
 ## Tech Stack
 
@@ -87,7 +89,7 @@ src/
     ClientLoader.tsx            # Dynamic import (no SSR)
     canvas/
       PlannerCanvas.tsx         # Fabric.js canvas + imperative API
-      hooks/                    # 9 canvas hooks
+      hooks/                    # 10 canvas hooks
       utils/                    # Serialization, geometry, Fabric helpers
     sidebar/                    # Feature panels (calibration, shapes, lines, cleanup, storage)
     ui/                         # Shared UI components (button, input, dialog, tabs, etc.)
@@ -102,7 +104,7 @@ src/
 See [`docs/`](./docs/) for detailed documentation:
 
 - [Architecture](./docs/architecture.md) -- component hierarchy, data flow, mode system
-- [Canvas Hooks](./docs/canvas-hooks.md) -- all 9 hooks and the imperative handle
+- [Canvas Hooks](./docs/canvas-hooks.md) -- all 10 hooks and the imperative handle
 - [State Management](./docs/state-management.md) -- Zustand store, FabricRefs pattern
 - [Serialization](./docs/serialization.md) -- project format, import/export, backward compatibility
 - [Types](./docs/types.md) -- all exported TypeScript types

@@ -27,9 +27,10 @@ npx tsc --noEmit # Type-check
 - **FabricRefs pattern**: mutable Fabric objects live in a `Map<number, FabricRefs>` ref (`allFabricRefsRef`) inside `PlannerCanvas`, not in Zustand.
 - **Mode system**: `PlannerMode = 'normal' | 'calibrating' | 'drawing-line' | 'drawing-mask' | 'cleanup'`. `useCanvasEvents` routes mouse events by mode.
 - **Imperative handle**: `PlannerCanvas` exposes `PlannerCanvasHandle` via `forwardRef` + `useImperativeHandle`. Sidebar calls canvas methods through this ref.
-- **Hooks compose in PlannerCanvas**: `useFabricCanvas`, `usePanZoom`, `useCalibration`, `useShapes`, `useLines`, `useImages`, `useCleanup`, `useCanvasEvents`, `useKeyboardShortcuts`. All share `allFabricRefsRef`.
-- **Auto-save**: debounced (2s) writes to IndexedDB on object modification.
-- **Serialization**: `SerializedProject` (version 2) combines store metadata + extracted Fabric state. Compatible with v2 vanilla app format.
+- **Hooks compose in PlannerCanvas**: `useFabricCanvas`, `usePanZoom`, `useCalibration`, `useShapes`, `useLines`, `useImages`, `useCleanup`, `useCanvasEvents`, `useKeyboardShortcuts`, `useHistory`. All share `allFabricRefsRef`.
+- **Undo/redo**: `HistoryManager` (`lib/history.ts`) maintains a 50-entry snapshot stack pairing Zustand + Fabric state. Images are deduplicated via an IDB-backed pool with LRU cache.
+- **Auto-save**: always-on, debounced (2s) auto-save to IndexedDB with undo/redo history. `beforeunload` handler for safety.
+- **Serialization**: `SerializedProject` (version 3, backward-compatible with v2) combines store metadata + extracted Fabric state + optional `metadata` field.
 
 ## File Structure
 
@@ -41,7 +42,7 @@ src/
     ClientLoader.tsx            # Dynamic import wrapper (no SSR)
     canvas/
       PlannerCanvas.tsx         # Canvas + imperative handle
-      hooks/                    # 9 hooks (useFabricCanvas, usePanZoom, etc.)
+      hooks/                    # 10 hooks (useFabricCanvas, usePanZoom, useHistory, etc.)
       utils/                    # serialization, geometry, fabricHelpers
     sidebar/                    # Sidebar panels (calibration, shapes, lines, etc.)
     ui/                         # Reusable UI (button, input, dialog, tabs, etc.)
@@ -49,6 +50,7 @@ src/
     types.ts                    # All TypeScript types
     store.ts                    # Zustand store
     constants.ts                # Colors, theme, defaults, DB config
+    history.ts                  # HistoryManager (undo/redo stack, image pool)
     storage/                    # indexeddb.ts, json-export.ts
   __tests__/                    # Vitest tests
 ```

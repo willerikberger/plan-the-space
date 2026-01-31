@@ -16,7 +16,8 @@ Defined in `src/lib/store.ts`. Created with `create<PlannerStore>()`.
 | `selectedColor` | `string` | `'rgba(76, 175, 80, 0.6)'` | Current shape fill color |
 | `selectedLineColor` | `string` | `'rgba(244, 67, 54, 1)'` | Current line stroke color |
 | `lineWidth` | `number` | `3` | Line stroke width |
-| `autoSaveEnabled` | `boolean` | `false` | Whether auto-save is active |
+| `autoSaveEnabled` | `boolean` | `true` | Whether auto-save is active (always on) |
+| `historyState` | `HistoryState` | `{ canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 }` | Undo/redo availability for toolbar buttons |
 | `statusMessage` | `string` | `'Load an image to get started'` | Status bar text |
 | `calibrationPixelLength` | `number \| null` | `null` | Measured pixel distance (calibration UI) |
 | `showCalibrationInput` | `boolean` | `false` | Whether calibration input is visible |
@@ -37,6 +38,7 @@ Defined in `src/lib/store.ts`. Created with `create<PlannerStore>()`.
 | `setSelectedLineColor` | `(color: string) => void` | Set line color |
 | `setLineWidth` | `(w: number) => void` | Set line width |
 | `setAutoSaveEnabled` | `(enabled: boolean) => void` | Toggle auto-save |
+| `setHistoryState` | `(state: HistoryState) => void` | Update undo/redo availability (called by `useHistory`) |
 | `setStatusMessage` | `(msg: string) => void` | Set status text |
 | `setCalibrationPixelLength` | `(len: number \| null) => void` | Set pixel distance |
 | `setShowCalibrationInput` | `(show: boolean) => void` | Show/hide calibration UI |
@@ -134,6 +136,7 @@ Accessed via: `(fabricObject as unknown as Record<string, unknown>).objectId`
    --> useCanvasEvents fires handler
    --> Hook updates Fabric objects directly (label positions, dims text)
    --> If finalized: updateObject() on store
+   --> captureSnapshot() (history)
    --> triggerAutoSave()
 
 3. SERIALIZE
@@ -148,5 +151,6 @@ Accessed via: `(fabricObject as unknown as Record<string, unknown>).objectId`
    --> Remove all Fabric objects from canvas (rect, label, dims, line, image)
    --> Delete from allFabricRefsRef Map
    --> removeObject(id) from store
+   --> captureSnapshot() (history)
    --> triggerAutoSave()
 ```
