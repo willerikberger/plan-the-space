@@ -1,5 +1,5 @@
 import type { SerializedProject } from '@/lib/types'
-import { validateProjectData } from '@/components/canvas/utils/serialization'
+import { validateProjectData, migrateProject } from '@/components/canvas/utils/serialization'
 
 export function downloadProjectAsJson(data: SerializedProject): void {
   const json = JSON.stringify(data, null, 2)
@@ -26,7 +26,7 @@ export function importProjectFromFile(file: File): Promise<SerializedProject> {
           reject(new Error('Invalid project file format'))
           return
         }
-        resolve(data as SerializedProject)
+        resolve(migrateProject(data as SerializedProject))
       } catch (err) {
         reject(err instanceof Error ? err : new Error('Failed to parse JSON'))
       }

@@ -77,9 +77,14 @@ export const AUTOSAVE_DEBOUNCE_MS = 2000
 // IndexedDB
 // ============================================
 export const DB_NAME = 'OutdoorPlannerDB'
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 export const STORE_NAME = 'projects'
+export const IMAGE_POOL_STORE = 'image-pool'
 export const STORAGE_KEY = 'outdoor-planner-project'
+
+// History
+export const HISTORY_LIMIT = 50
+export const IMAGE_LRU_SIZE = 3
 
 // ============================================
 // Calibration

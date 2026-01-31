@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileInput } from '@/components/ui/FileInput'
-import { usePlannerStore } from '@/lib/store'
 import { checkProjectExists } from '@/lib/storage/indexeddb'
 
 interface StoragePanelProps {
@@ -21,9 +20,7 @@ export function StoragePanel({
   onClear,
   onExport,
   onImport,
-  onToggleAutoSave,
 }: StoragePanelProps) {
-  const autoSaveEnabled = usePlannerStore((s) => s.autoSaveEnabled)
   const [storageStatus, setStorageStatus] = useState('No saved data')
 
   useEffect(() => {
@@ -42,14 +39,7 @@ export function StoragePanel({
       </h2>
 
       <div className="mb-3">
-        <label className="text-[#aaa] text-xs block mb-1.5">Auto-Save (Browser Storage)</label>
-        <Button
-          variant="secondary"
-          className={autoSaveEnabled ? 'bg-[#27ae60] hover:bg-[#2ecc71]' : ''}
-          onClick={onToggleAutoSave}
-        >
-          Auto-Save: {autoSaveEnabled ? 'On' : 'Off'}
-        </Button>
+        <span className="text-xs text-[#27ae60] font-medium">Auto-save: On</span>
       </div>
 
       <div className="flex gap-2 mb-2">

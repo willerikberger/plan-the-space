@@ -118,6 +118,33 @@ describe('usePlannerStore', () => {
     expect(state.pixelsPerMeter).toBeNull()
     expect(state.objects.size).toBe(0)
   })
+
+  it('has historyState in initial state', () => {
+    const state = usePlannerStore.getState()
+    expect(state.historyState).toEqual({
+      canUndo: false,
+      canRedo: false,
+      undoCount: 0,
+      redoCount: 0,
+    })
+  })
+
+  it('setHistoryState updates history state', () => {
+    usePlannerStore.getState().setHistoryState({
+      canUndo: true,
+      canRedo: false,
+      undoCount: 3,
+      redoCount: 0,
+    })
+    const state = usePlannerStore.getState()
+    expect(state.historyState.canUndo).toBe(true)
+    expect(state.historyState.undoCount).toBe(3)
+  })
+
+  it('autoSaveEnabled defaults to true', () => {
+    const state = usePlannerStore.getState()
+    expect(state.autoSaveEnabled).toBe(true)
+  })
 })
 
 describe('selectVisibleObjects', () => {

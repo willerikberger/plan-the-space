@@ -5,6 +5,10 @@ import {
   loadProject,
   clearProject,
   checkProjectExists,
+  saveImageData,
+  loadImageData,
+  deleteImageData,
+  clearImagePool,
 } from '@/lib/storage/indexeddb'
 import type { SerializedProject } from '@/lib/types'
 
@@ -43,11 +47,11 @@ beforeEach(async () => {
 })
 
 describe('IndexedDB storage', () => {
-  it('saves and loads a project', async () => {
+  it('saves and loads a project (migrated to v3)', async () => {
     await saveProject(testProject)
     const loaded = await loadProject()
     expect(loaded).not.toBeNull()
-    expect(loaded?.version).toBe(2)
+    expect(loaded?.version).toBe(3) // v2 input is migrated to v3 on load
     expect(loaded?.pixelsPerMeter).toBe(50)
     expect(loaded?.objects).toHaveLength(1)
   })
@@ -81,5 +85,43 @@ describe('IndexedDB storage', () => {
     await saveProject(updated)
     const loaded = await loadProject()
     expect(loaded?.pixelsPerMeter).toBe(100)
+  })
+
+  it('loads v2 project as v3 after migration', async () => {
+    await saveProject(testProject) // v2
+    const loaded = await loadProject()
+    expect(loaded).not.toBeNull()
+    expect(loaded?.version).toBe(3)
+    if (loaded && 'metadata' in loaded) {
+      expect((loaded as Record<string, unknown>).metadata).toBeDefined()
+    }
+  })
+})
+
+describe('Image pool operations', () => {
+  it('saves and loads image data', async () => {
+    await saveImageData('ref-1', 'data:image/png;base64,abc123')
+    const loaded = await loadImageData('ref-1')
+    expect(loaded).toBe('data:image/png;base64,abc123')
+  })
+
+  it('returns null for non-existent image', async () => {
+    const loaded = await loadImageData('nonexistent')
+    expect(loaded).toBeNull()
+  })
+
+  it('deletes image data', async () => {
+    await saveImageData('ref-2', 'test-data')
+    await deleteImageData('ref-2')
+    const loaded = await loadImageData('ref-2')
+    expect(loaded).toBeNull()
+  })
+
+  it('clears all image data', async () => {
+    await saveImageData('a', 'data-a')
+    await saveImageData('b', 'data-b')
+    await clearImagePool()
+    expect(await loadImageData('a')).toBeNull()
+    expect(await loadImageData('b')).toBeNull()
   })
 })

@@ -1,6 +1,7 @@
 import type {
   PlannerObject,
   SerializedProject,
+  SerializedProjectV3,
   SerializedObject,
   SerializedShape,
   SerializedLine,
@@ -140,12 +141,13 @@ export function serializeProject(
   }
 
   return {
-    version: 2,
+    version: 3,
     pixelsPerMeter,
     backgroundImage: backgroundImageData,
     savedAt: new Date().toISOString(),
     objects: serializedObjects,
-  }
+    metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
+  } as SerializedProjectV3
 }
 
 /** Deserialize a project JSON into store-ready objects */
@@ -209,5 +211,19 @@ export function deserializeProject(data: SerializedProject): {
     backgroundImageData: data.backgroundImage,
     objects,
     serializedObjects: data.objects,
+  }
+}
+
+/** Migrate a v2 (or earlier) project to v3 format. Already-v3 data passes through unchanged. */
+export function migrateProject(data: SerializedProject): SerializedProjectV3 {
+  if (data.version === 3 && 'metadata' in data) {
+    return data as SerializedProjectV3
+  }
+  const { id, ...rest } = data
+  return {
+    ...rest,
+    version: 3,
+    metadata: { exportedFrom: 'outdoor-planner-next' },
+    ...(id ? { id } : {}),
   }
 }

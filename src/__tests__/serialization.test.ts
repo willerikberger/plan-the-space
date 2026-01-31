@@ -4,8 +4,9 @@ import {
   serializeProject,
   deserializeProject,
   validateProjectData,
+  migrateProject,
 } from '@/components/canvas/utils/serialization'
-import type { ShapeObject, LineObject, MaskObject, SerializedProject } from '@/lib/types'
+import type { ShapeObject, LineObject, MaskObject, SerializedProject, SerializedProjectV3 } from '@/lib/types'
 
 describe('validateProjectData', () => {
   it('accepts valid v2 project', () => {
@@ -16,6 +17,19 @@ describe('validateProjectData', () => {
         backgroundImage: null,
         savedAt: '2024-01-01',
         objects: [],
+      }),
+    ).toBe(true)
+  })
+
+  it('accepts valid v3 project', () => {
+    expect(
+      validateProjectData({
+        version: 3,
+        pixelsPerMeter: 50,
+        backgroundImage: null,
+        savedAt: '2024-01-01',
+        objects: [],
+        metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
       }),
     ).toBe(true)
   })
@@ -167,9 +181,10 @@ describe('round-trip serialize -> deserialize', () => {
       },
     )
 
-    expect(project.version).toBe(2)
+    expect(project.version).toBe(3)
     expect(project.pixelsPerMeter).toBe(50)
     expect(project.objects).toHaveLength(2)
+    expect((project as SerializedProjectV3).metadata?.exportedFrom).toBe('outdoor-planner-next')
 
     const deserialized = deserializeProject(project)
     expect(deserialized.pixelsPerMeter).toBe(50)
@@ -240,5 +255,48 @@ describe('backward compatibility (v2 format from vanilla app)', () => {
     expect(result.objects[1].type).toBe('mask')
     // Serialized data preserved for canvas reconstruction
     expect(result.serializedObjects[0]).toHaveProperty('baseWidthPx', 220.5)
+  })
+})
+
+describe('migrateProject', () => {
+  it('migrates v2 to v3 with metadata', () => {
+    const v2Data: SerializedProject = {
+      version: 2,
+      pixelsPerMeter: 50,
+      backgroundImage: null,
+      savedAt: '2024-01-01',
+      objects: [],
+    }
+    const v3 = migrateProject(v2Data)
+    expect(v3.version).toBe(3)
+    expect(v3.metadata?.exportedFrom).toBe('outdoor-planner-next')
+    expect(v3.pixelsPerMeter).toBe(50)
+    expect(v3.objects).toEqual([])
+  })
+
+  it('passes through v3 data unchanged', () => {
+    const v3Data: SerializedProjectV3 = {
+      version: 3,
+      pixelsPerMeter: 75,
+      backgroundImage: 'data:test',
+      savedAt: '2024-06-01',
+      objects: [],
+      metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
+    }
+    const result = migrateProject(v3Data)
+    expect(result).toEqual(v3Data)
+  })
+
+  it('preserves IDB id during migration', () => {
+    const v2Data: SerializedProject = {
+      version: 2,
+      pixelsPerMeter: 50,
+      backgroundImage: null,
+      savedAt: '2024-01-01',
+      objects: [],
+      id: 'outdoor-planner-project',
+    }
+    const v3 = migrateProject(v2Data)
+    expect(v3.id).toBe('outdoor-planner-project')
   })
 })

@@ -1,6 +1,13 @@
 import { create } from 'zustand'
-import type { PlannerStore, PlannerMode, PlannerObject, ObjectType } from './types'
+import type { PlannerStore, PlannerMode, PlannerObject, HistoryState } from './types'
 import { SHAPE_COLORS, LINE_COLORS, DEFAULTS } from './constants'
+
+const initialHistoryState: HistoryState = {
+  canUndo: false,
+  canRedo: false,
+  undoCount: 0,
+  redoCount: 0,
+}
 
 const initialState = {
   mode: 'normal' as PlannerMode,
@@ -11,8 +18,9 @@ const initialState = {
   selectedColor: SHAPE_COLORS[0],
   selectedLineColor: LINE_COLORS[0],
   lineWidth: DEFAULTS.lineWidth,
-  autoSaveEnabled: false,
+  autoSaveEnabled: true,
   statusMessage: 'Load an image to get started',
+  historyState: initialHistoryState,
   calibrationPixelLength: null as number | null,
   showCalibrationInput: false,
 }
@@ -85,6 +93,9 @@ export const usePlannerStore = create<PlannerStore>()((set, get) => ({
 
   // Status
   setStatusMessage: (msg) => set({ statusMessage: msg }),
+
+  // History
+  setHistoryState: (historyState) => set({ historyState }),
 
   // Calibration UI
   setCalibrationPixelLength: (len) => set({ calibrationPixelLength: len }),

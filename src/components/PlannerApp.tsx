@@ -83,7 +83,10 @@ export default function PlannerApp() {
         onToggleAutoSave={() => canvasRef.current?.toggleAutoSave()}
       />
       <main className="flex-1 flex flex-col bg-[#0d1b2a]">
-        <Toolbar />
+        <Toolbar
+          onUndo={() => canvasRef.current?.undo()}
+          onRedo={() => canvasRef.current?.redo()}
+        />
         <PlannerCanvas ref={canvasRef} />
         <StatusBar />
       </main>

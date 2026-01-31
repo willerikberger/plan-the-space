@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react'
-import type { Canvas, Rect, Line } from 'fabric'
 import { useFabricCanvas } from './hooks/useFabricCanvas'
 import { usePanZoom } from './hooks/usePanZoom'
 import { useCalibration } from './hooks/useCalibration'
@@ -11,10 +10,19 @@ import { useImages } from './hooks/useImages'
 import { useCleanup } from './hooks/useCleanup'
 import { useCanvasEvents } from './hooks/useCanvasEvents'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useHistory } from './hooks/useHistory'
 import { usePlannerStore } from '@/lib/store'
-import type { ShapeFabricRefs, LineFabricRefs, MaskFabricRefs, ImageFabricRefs, SerializedObject } from '@/lib/types'
+import type {
+  ShapeFabricRefs,
+  LineFabricRefs,
+  MaskFabricRefs,
+  ImageFabricRefs,
+  SerializedObject,
+  HistorySnapshot,
+  PlannerObject,
+} from '@/lib/types'
 import { AUTOSAVE_DEBOUNCE_MS } from '@/lib/constants'
-import { serializeProject, deserializeProject } from '@/components/canvas/utils/serialization'
+import { serializeProject, deserializeProject, serializeObject } from '@/components/canvas/utils/serialization'
 import { saveProject as saveToIDB, loadProject as loadFromIDB, clearProject as clearIDB } from '@/lib/storage/indexeddb'
 import { downloadProjectAsJson, importProjectFromFile } from '@/lib/storage/json-export'
 
@@ -53,6 +61,9 @@ export interface PlannerCanvasHandle {
   toggleAutoSave: () => void
   // Reorder
   reorderObjects: () => void
+  // History
+  undo: () => Promise<void>
+  redo: () => Promise<void>
 }
 
 // Union type for all fabric refs
@@ -92,172 +103,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     allFabricRefsRef as React.RefObject<Map<number, MaskFabricRefs | ImageFabricRefs>>,
   )
 
-  // Object management
-  const deleteObject = useCallback(
-    (id: number) => {
-      const canvas = fabricCanvasRef.current
-      if (!canvas) return
-      const refs = allFabricRefsRef.current.get(id)
-      if (refs) {
-        if ('rect' in refs) canvas.remove(refs.rect)
-        if ('label' in refs) canvas.remove(refs.label)
-        if ('dims' in refs) canvas.remove(refs.dims)
-        if ('line' in refs) {
-          canvas.remove(refs.line)
-          if ('label' in refs) canvas.remove(refs.label)
-        }
-        if ('image' in refs) canvas.remove(refs.image)
-        allFabricRefsRef.current.delete(id)
-      }
-      usePlannerStore.getState().removeObject(id)
-      canvas.renderAll()
-      triggerAutoSave()
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fabricCanvasRef],
-  )
-
-  const deleteSelected = useCallback(() => {
-    const canvas = fabricCanvasRef.current
-    if (!canvas) return
-    const active = canvas.getActiveObjects()
-    for (const fo of active) {
-      const foAny = fo as unknown as Record<string, unknown>
-      if (foAny.objectType === 'background') continue
-      const id = foAny.objectId as number | undefined
-      if (id != null) {
-        deleteObject(id)
-      }
-    }
-    canvas.discardActiveObject()
-    canvas.renderAll()
-  }, [fabricCanvasRef, deleteObject])
-
-  const clearAll = useCallback(() => {
-    const canvas = fabricCanvasRef.current
-    if (!canvas) return
-    const store = usePlannerStore.getState()
-    const toRemove: number[] = []
-    for (const [id, obj] of store.objects) {
-      if (obj.type === 'shape' || obj.type === 'overlayImage' || obj.type === 'line') {
-        toRemove.push(id)
-      }
-    }
-    for (const id of toRemove) {
-      deleteObject(id)
-    }
-    canvas.renderAll()
-  }, [fabricCanvasRef, deleteObject])
-
-  const selectObject = useCallback(
-    (id: number) => {
-      const canvas = fabricCanvasRef.current
-      if (!canvas) return
-      const refs = allFabricRefsRef.current.get(id)
-      if (refs) {
-        const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
-        if (obj) {
-          canvas.setActiveObject(obj)
-          canvas.renderAll()
-        }
-      }
-    },
-    [fabricCanvasRef],
-  )
-
-  const reorderObjects = useCallback(() => {
-    const canvas = fabricCanvasRef.current
-    if (!canvas) return
-    let idx = 0
-
-    // Background image first
-    if (images.backgroundRef.current) {
-      canvas.moveObjectTo(images.backgroundRef.current, 0)
-      idx = 1
-    }
-
-    const store = usePlannerStore.getState()
-    // Masks
-    for (const obj of store.objects.values()) {
-      if (obj.type === 'mask') {
-        const refs = allFabricRefsRef.current.get(obj.id)
-        if (refs && 'rect' in refs) {
-          canvas.moveObjectTo(refs.rect, idx++)
-        }
-      }
-    }
-    // Background images
-    for (const obj of store.objects.values()) {
-      if (obj.type === 'backgroundImage') {
-        const refs = allFabricRefsRef.current.get(obj.id)
-        if (refs && 'image' in refs) {
-          canvas.moveObjectTo(refs.image, idx++)
-        }
-      }
-    }
-    canvas.renderAll()
-  }, [fabricCanvasRef, images.backgroundRef])
-
-  const moveObjectUp = useCallback(
-    (id: number) => {
-      const canvas = fabricCanvasRef.current
-      if (!canvas) return
-      const refs = allFabricRefsRef.current.get(id)
-      if (!refs) return
-      const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
-      if (!obj) return
-      const objects = canvas.getObjects()
-      const currentIdx = objects.indexOf(obj)
-      if (currentIdx < objects.length - 1) {
-        canvas.moveObjectTo(obj, currentIdx + 1)
-        canvas.renderAll()
-      }
-    },
-    [fabricCanvasRef],
-  )
-
-  const moveObjectDown = useCallback(
-    (id: number) => {
-      const canvas = fabricCanvasRef.current
-      if (!canvas) return
-      const refs = allFabricRefsRef.current.get(id)
-      if (!refs) return
-      const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
-      if (!obj) return
-      const objects = canvas.getObjects()
-      const currentIdx = objects.indexOf(obj)
-      const store = usePlannerStore.getState()
-      const minIdx = Array.from(store.objects.values()).filter(
-        (o) => o.type === 'mask' || o.type === 'backgroundImage',
-      ).length + (images.backgroundRef.current ? 1 : 0)
-      if (currentIdx > minIdx) {
-        canvas.moveObjectTo(obj, currentIdx - 1)
-        canvas.renderAll()
-      }
-    },
-    [fabricCanvasRef, images.backgroundRef],
-  )
-
-  // Auto-save
-  const triggerAutoSave = useCallback(() => {
-    const store = usePlannerStore.getState()
-    if (!store.autoSaveEnabled) return
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
-    autoSaveTimerRef.current = setTimeout(async () => {
-      const s = usePlannerStore.getState()
-      const objects = Array.from(s.objects.values())
-      const data = serializeProject(
-        s.pixelsPerMeter,
-        s.backgroundImageData,
-        objects,
-        (id) => getFabricState(id),
-      )
-      await saveToIDB(data)
-      s.setStatusMessage('Saved to browser storage')
-    }, AUTOSAVE_DEBOUNCE_MS)
-  }, [])
-
-  const getFabricState = (id: number) => {
+  const getFabricState = useCallback((id: number) => {
     const refs = allFabricRefsRef.current.get(id)
     if (!refs) return null
     if ('rect' in refs && !('label' in refs)) {
@@ -317,17 +163,65 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
       }
     }
     return null
-  }
-
-  // Storage operations
-  const save = useCallback(async () => {
-    const s = usePlannerStore.getState()
-    const objects = Array.from(s.objects.values())
-    const data = serializeProject(s.pixelsPerMeter, s.backgroundImageData, objects, getFabricState)
-    await saveToIDB(data)
-    s.setStatusMessage('Saved to browser storage')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ============================================
+  // Canvas clearing helper (shared by load/import/restore)
+  // ============================================
+  const clearCanvas = useCallback(() => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas) return
+    // Remove all tracked objects from canvas
+    for (const [, refs] of allFabricRefsRef.current) {
+      if ('rect' in refs) canvas.remove(refs.rect)
+      if ('label' in refs) canvas.remove(refs.label)
+      if ('dims' in refs) canvas.remove(refs.dims)
+      if ('line' in refs) {
+        canvas.remove(refs.line)
+        if ('label' in refs) canvas.remove(refs.label)
+      }
+      if ('image' in refs) canvas.remove(refs.image)
+    }
+    allFabricRefsRef.current.clear()
+    if (images.backgroundRef.current) {
+      canvas.remove(images.backgroundRef.current)
+      images.backgroundRef.current = null // eslint-disable-line react-hooks/immutability -- mutable ref pattern
+    }
+    usePlannerStore.getState().clearObjects()
+  }, [fabricCanvasRef, images.backgroundRef])
+
+  const reorderObjects = useCallback(() => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas) return
+    let idx = 0
+
+    // Background image first
+    if (images.backgroundRef.current) {
+      canvas.moveObjectTo(images.backgroundRef.current, 0)
+      idx = 1
+    }
+
+    const store = usePlannerStore.getState()
+    // Masks
+    for (const obj of store.objects.values()) {
+      if (obj.type === 'mask') {
+        const refs = allFabricRefsRef.current.get(obj.id)
+        if (refs && 'rect' in refs) {
+          canvas.moveObjectTo(refs.rect, idx++)
+        }
+      }
+    }
+    // Background images
+    for (const obj of store.objects.values()) {
+      if (obj.type === 'backgroundImage') {
+        const refs = allFabricRefsRef.current.get(obj.id)
+        if (refs && 'image' in refs) {
+          canvas.moveObjectTo(refs.image, idx++)
+        }
+      }
+    }
+    canvas.renderAll()
+  }, [fabricCanvasRef, images.backgroundRef])
 
   const loadProjectFromData = useCallback(
     async (serializedObjects: SerializedObject[]) => {
@@ -354,24 +248,265 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     [shapes, lines, cleanup, images, reorderObjects, fabricCanvasRef],
   )
 
+  // ============================================
+  // History: restoreFromSnapshot + useHistory hook
+  // ============================================
+
+  // Stable ref for HistoryManager — used in restoreFromSnapshot
+  const historyManagerRef = useRef<import('@/lib/history').HistoryManager | null>(null)
+
+  const restoreFromSnapshot = useCallback(
+    async (snapshot: HistorySnapshot) => {
+      clearCanvas()
+
+      const manager = historyManagerRef.current
+      const ss = snapshot.storeSnapshot
+
+      // Resolve background image
+      let backgroundImageData: string | null = null
+      if (ss.backgroundImageRef && manager) {
+        backgroundImageData = await manager.resolveImage(ss.backgroundImageRef)
+      }
+
+      // Restore store objects — resolve image refs back to data
+      const objects: PlannerObject[] = []
+      for (const obj of ss.objects) {
+        const o = obj as unknown as Record<string, unknown>
+        if ((o.type === 'overlayImage' || o.type === 'backgroundImage') && typeof o.imageDataRef === 'string' && manager) {
+          const imageData = await manager.resolveImage(o.imageDataRef as string)
+          const restored = { ...obj, imageData } as PlannerObject
+          // Remove the ref field
+          delete (restored as unknown as Record<string, unknown>).imageDataRef
+          objects.push(restored)
+        } else {
+          objects.push({ ...obj })
+        }
+      }
+
+      // Load into store
+      usePlannerStore.getState().loadProject({
+        pixelsPerMeter: ss.pixelsPerMeter,
+        backgroundImageData,
+        objects,
+      })
+
+      // Reconstruct Fabric objects from snapshots
+      // Build SerializedObject[] from fabricSnapshots + store objects
+      const serializedObjects: SerializedObject[] = []
+      for (const fs of snapshot.fabricSnapshots) {
+        const storeObj = objects.find((o) => o.id === fs.id)
+        if (storeObj) {
+          serializedObjects.push(serializeObject(storeObj, fs.fabricState as {
+            left: number; top: number; scaleX: number; scaleY: number; angle: number;
+            width?: number; height?: number; baseWidthPx?: number; baseHeightPx?: number;
+            x1?: number; y1?: number; x2?: number; y2?: number; strokeWidth?: number;
+            originX?: string; originY?: string;
+          }))
+        }
+      }
+
+      if (backgroundImageData) {
+        usePlannerStore.getState().setBackgroundImageData(backgroundImageData)
+        await images.loadBackgroundFromData(backgroundImageData, () => {
+          loadProjectFromData(serializedObjects)
+        })
+      } else {
+        await loadProjectFromData(serializedObjects)
+      }
+    },
+    [clearCanvas, images, loadProjectFromData],
+  )
+
+  const history = useHistory({
+    getFabricState,
+    restoreFromSnapshot,
+  })
+  // Keep the manager ref in sync for restoreFromSnapshot to use
+  historyManagerRef.current = history.managerRef.current
+
+  const { captureSnapshot, undo, redo, resetHistory, isRestoringRef } = history
+
+  // ============================================
+  // Auto-save
+  // ============================================
+  const triggerAutoSave = useCallback(() => {
+    if (isRestoringRef.current) return
+    const store = usePlannerStore.getState()
+    if (!store.autoSaveEnabled) return
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        const s = usePlannerStore.getState()
+        const objects = Array.from(s.objects.values())
+        const data = serializeProject(
+          s.pixelsPerMeter,
+          s.backgroundImageData,
+          objects,
+          (id) => getFabricState(id),
+        )
+        await saveToIDB(data)
+        s.setStatusMessage('Saved to browser storage')
+      } catch (err) {
+        usePlannerStore.getState().setStatusMessage('Auto-save failed')
+        console.error('Auto-save error:', err)
+      }
+    }, AUTOSAVE_DEBOUNCE_MS)
+  }, [getFabricState, isRestoringRef])
+
+  // ============================================
+  // Object management
+  // ============================================
+  const deleteObject = useCallback(
+    (id: number) => {
+      const canvas = fabricCanvasRef.current
+      if (!canvas) return
+      const refs = allFabricRefsRef.current.get(id)
+      if (refs) {
+        if ('rect' in refs) canvas.remove(refs.rect)
+        if ('label' in refs) canvas.remove(refs.label)
+        if ('dims' in refs) canvas.remove(refs.dims)
+        if ('line' in refs) {
+          canvas.remove(refs.line)
+          if ('label' in refs) canvas.remove(refs.label)
+        }
+        if ('image' in refs) canvas.remove(refs.image)
+        allFabricRefsRef.current.delete(id)
+      }
+      usePlannerStore.getState().removeObject(id)
+      canvas.renderAll()
+    },
+    [fabricCanvasRef],
+  )
+
+  const deleteSelected = useCallback(() => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas) return
+    const active = canvas.getActiveObjects()
+    for (const fo of active) {
+      const foAny = fo as unknown as Record<string, unknown>
+      if (foAny.objectType === 'background') continue
+      const id = foAny.objectId as number | undefined
+      if (id != null) {
+        deleteObject(id)
+      }
+    }
+    canvas.discardActiveObject()
+    canvas.renderAll()
+    captureSnapshot()
+    triggerAutoSave()
+  }, [fabricCanvasRef, deleteObject, captureSnapshot])
+
+  const clearAll = useCallback(() => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas) return
+    const store = usePlannerStore.getState()
+    const toRemove: number[] = []
+    for (const [id, obj] of store.objects) {
+      if (obj.type === 'shape' || obj.type === 'overlayImage' || obj.type === 'line') {
+        toRemove.push(id)
+      }
+    }
+    for (const id of toRemove) {
+      deleteObject(id)
+    }
+    canvas.renderAll()
+    captureSnapshot()
+    triggerAutoSave()
+  }, [fabricCanvasRef, deleteObject, captureSnapshot])
+
+  const selectObject = useCallback(
+    (id: number) => {
+      const canvas = fabricCanvasRef.current
+      if (!canvas) return
+      const refs = allFabricRefsRef.current.get(id)
+      if (refs) {
+        const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
+        if (obj) {
+          canvas.setActiveObject(obj)
+          canvas.renderAll()
+        }
+      }
+    },
+    [fabricCanvasRef],
+  )
+
+  const moveObjectUp = useCallback(
+    (id: number) => {
+      const canvas = fabricCanvasRef.current
+      if (!canvas) return
+      const refs = allFabricRefsRef.current.get(id)
+      if (!refs) return
+      const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
+      if (!obj) return
+      const objects = canvas.getObjects()
+      const currentIdx = objects.indexOf(obj)
+      if (currentIdx < objects.length - 1) {
+        canvas.moveObjectTo(obj, currentIdx + 1)
+        canvas.renderAll()
+        captureSnapshot()
+        triggerAutoSave()
+      }
+    },
+    [fabricCanvasRef, captureSnapshot],
+  )
+
+  const moveObjectDown = useCallback(
+    (id: number) => {
+      const canvas = fabricCanvasRef.current
+      if (!canvas) return
+      const refs = allFabricRefsRef.current.get(id)
+      if (!refs) return
+      const obj = 'rect' in refs ? refs.rect : 'line' in refs ? refs.line : 'image' in refs ? refs.image : null
+      if (!obj) return
+      const objects = canvas.getObjects()
+      const currentIdx = objects.indexOf(obj)
+      const store = usePlannerStore.getState()
+      const minIdx = Array.from(store.objects.values()).filter(
+        (o) => o.type === 'mask' || o.type === 'backgroundImage',
+      ).length + (images.backgroundRef.current ? 1 : 0)
+      if (currentIdx > minIdx) {
+        canvas.moveObjectTo(obj, currentIdx - 1)
+        canvas.renderAll()
+        captureSnapshot()
+        triggerAutoSave()
+      }
+    },
+    [fabricCanvasRef, images.backgroundRef, captureSnapshot],
+  )
+
+  // beforeunload — best-effort save on page close
+  useEffect(() => {
+    const handler = () => {
+      const s = usePlannerStore.getState()
+      if (!s.autoSaveEnabled) return
+      const objects = Array.from(s.objects.values())
+      const data = serializeProject(s.pixelsPerMeter, s.backgroundImageData, objects, getFabricState)
+      // Synchronous best-effort via sendBeacon isn't possible with IDB,
+      // but we can try a fire-and-forget save
+      saveToIDB(data).catch(() => {})
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [getFabricState])
+
+  // ============================================
+  // Storage operations
+  // ============================================
+  const save = useCallback(async () => {
+    const s = usePlannerStore.getState()
+    const objects = Array.from(s.objects.values())
+    const data = serializeProject(s.pixelsPerMeter, s.backgroundImageData, objects, getFabricState)
+    await saveToIDB(data)
+    s.setStatusMessage('Saved to browser storage')
+  }, [getFabricState])
+
   const load = useCallback(async () => {
     const data = await loadFromIDB()
     if (!data) {
       usePlannerStore.getState().setStatusMessage('No saved project found')
       return
     }
-    // Clear current
-    const canvas = fabricCanvasRef.current
-    if (!canvas) return
-    // Remove all objects
-    for (const [id] of allFabricRefsRef.current) {
-      deleteObject(id)
-    }
-    if (images.backgroundRef.current) {
-      canvas.remove(images.backgroundRef.current)
-      images.backgroundRef.current = null
-    }
-    usePlannerStore.getState().clearObjects()
+    clearCanvas()
 
     const deserialized = deserializeProject(data)
     usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter)
@@ -385,7 +520,10 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
       await loadProjectFromData(deserialized.serializedObjects)
     }
     usePlannerStore.getState().setStatusMessage('Loaded from browser storage')
-  }, [fabricCanvasRef, deleteObject, images, loadProjectFromData])
+    // Reset history and capture initial state after load
+    await resetHistory()
+    captureSnapshot()
+  }, [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot])
 
   const clearStorage = useCallback(async () => {
     await clearIDB()
@@ -398,23 +536,12 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     const data = serializeProject(s.pixelsPerMeter, s.backgroundImageData, objects, getFabricState)
     downloadProjectAsJson(data)
     s.setStatusMessage('Project exported successfully')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [getFabricState])
 
   const importJson = useCallback(
     async (file: File) => {
       const data = await importProjectFromFile(file)
-      const canvas = fabricCanvasRef.current
-      if (!canvas) return
-      // Clear current
-      for (const [id] of allFabricRefsRef.current) {
-        deleteObject(id)
-      }
-      if (images.backgroundRef.current) {
-        canvas.remove(images.backgroundRef.current)
-        images.backgroundRef.current = null
-      }
-      usePlannerStore.getState().clearObjects()
+      clearCanvas()
 
       const deserialized = deserializeProject(data)
       usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter)
@@ -428,8 +555,11 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
         await loadProjectFromData(deserialized.serializedObjects)
       }
       usePlannerStore.getState().setStatusMessage('Project imported')
+      // Reset history and capture initial state after import
+      await resetHistory()
+      captureSnapshot()
     },
-    [fabricCanvasRef, deleteObject, images, loadProjectFromData],
+    [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot],
   )
 
   const toggleAutoSave = useCallback(() => {
@@ -449,6 +579,18 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     return (active as unknown as Record<string, unknown>).objectId as number ?? null
   }, [fabricCanvasRef])
 
+  // ============================================
+  // Canvas event handlers — with history capture
+  // ============================================
+
+  // Wrapping callbacks that need captureSnapshot after they fire
+  const handleObjectModifiedWithHistory = useCallback(() => {
+    if (!isRestoringRef.current) {
+      captureSnapshot()
+      triggerAutoSave()
+    }
+  }, [captureSnapshot, triggerAutoSave, isRestoringRef])
+
   // Canvas events
   useCanvasEvents(fabricCanvasRef, {
     handleCalibrationClick: calibration.handleCalibrationClick,
@@ -457,12 +599,20 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     startPointRef: calibration.startPointRef,
     handleLineDrawStart: lines.handleLineDrawStart,
     updateDrawingLine: lines.updateDrawingLine,
-    finishDrawingLine: lines.finishDrawingLine,
+    finishDrawingLine: useCallback(() => {
+      lines.finishDrawingLine()
+      captureSnapshot()
+      triggerAutoSave()
+    }, [lines, captureSnapshot, triggerAutoSave]),
     lineStartRef: lines.lineStartRef,
     updateLineLabel: lines.updateLineLabel,
     handleMaskDrawStart: cleanup.handleMaskDrawStart,
     updateMaskRect: cleanup.updateMaskRect,
-    finishMaskRect: cleanup.finishMaskRect,
+    finishMaskRect: useCallback(() => {
+      cleanup.finishMaskRect()
+      captureSnapshot()
+      triggerAutoSave()
+    }, [cleanup, captureSnapshot, triggerAutoSave]),
     updateShapeLabels: shapes.updateShapeLabels,
     updateShapeDimensions: shapes.updateShapeDimensions,
     startPan: panZoom.startPan,
@@ -471,7 +621,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     isPanningRef: panZoom.isPanningRef,
     deleteSelected,
     reorderObjects,
-    triggerAutoSave,
+    triggerAutoSave: handleObjectModifiedWithHistory,
   })
 
   // Keyboard shortcuts
@@ -479,24 +629,90 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     cancelCalibration: calibration.cancelCalibration,
     cancelLineDrawing: lines.cancelLineDrawing,
     deleteSelected,
+    undo,
+    redo,
   })
+
+  // ============================================
+  // Wrapped actions that capture history
+  // ============================================
+  const addShapeWithHistory = useCallback(
+    (name: string, widthM: number, heightM: number) => {
+      shapes.addShape(name, widthM, heightM)
+      captureSnapshot()
+      triggerAutoSave()
+    },
+    [shapes, captureSnapshot, triggerAutoSave],
+  )
+
+  const applyCalibrationWithHistory = useCallback(
+    (meters: number) => {
+      calibration.applyCalibration(meters)
+      captureSnapshot()
+      triggerAutoSave()
+    },
+    [calibration, captureSnapshot, triggerAutoSave],
+  )
+
+  const loadBackgroundImageWithHistory = useCallback(
+    (file: File) => {
+      images.loadBackgroundImage(file)
+      // Background image loads async — capture on next tick
+      setTimeout(() => {
+        captureSnapshot()
+        triggerAutoSave()
+      }, 500)
+    },
+    [images, captureSnapshot, triggerAutoSave],
+  )
+
+  const addOverlayImageWithHistory = useCallback(
+    (file: File) => {
+      images.addOverlayImage(file)
+      setTimeout(() => {
+        captureSnapshot()
+        triggerAutoSave()
+      }, 500)
+    },
+    [images, captureSnapshot, triggerAutoSave],
+  )
+
+  const addCleanupImageWithHistory = useCallback(
+    (file: File) => {
+      cleanup.addCleanupImage(file)
+      setTimeout(() => {
+        captureSnapshot()
+        triggerAutoSave()
+      }, 500)
+    },
+    [cleanup, captureSnapshot, triggerAutoSave],
+  )
+
+  const deleteObjectWithHistory = useCallback(
+    (id: number) => {
+      deleteObject(id)
+      captureSnapshot()
+      triggerAutoSave()
+    },
+    [deleteObject, captureSnapshot, triggerAutoSave],
+  )
 
   // Expose imperative handle
   useImperativeHandle(ref, () => ({
     startCalibration: calibration.startCalibration,
     cancelCalibration: calibration.cancelCalibration,
-    applyCalibration: calibration.applyCalibration,
-    addShape: shapes.addShape,
+    applyCalibration: applyCalibrationWithHistory,
+    addShape: addShapeWithHistory,
     startLineDrawing: lines.startLineDrawing,
     cancelLineDrawing: lines.cancelLineDrawing,
-    loadBackgroundImage: images.loadBackgroundImage,
-    addOverlayImage: images.addOverlayImage,
+    loadBackgroundImage: loadBackgroundImageWithHistory,
+    addOverlayImage: addOverlayImageWithHistory,
     enterCleanupMode: cleanup.enterCleanupMode,
     exitCleanupMode: cleanup.exitCleanupMode,
     startDrawingMask: cleanup.startDrawingMask,
-    addCleanupImage: cleanup.addCleanupImage,
+    addCleanupImage: addCleanupImageWithHistory,
     selectObject,
-    deleteObject,
+    deleteObject: deleteObjectWithHistory,
     deleteSelected,
     clearAll,
     moveObjectUp,
@@ -509,6 +725,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(function PlannerCan
     importJson,
     toggleAutoSave,
     reorderObjects,
+    undo,
+    redo,
   }))
 
   return (

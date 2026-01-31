@@ -95,6 +95,37 @@ export type FabricRefs =
   | ImageFabricRefs
 
 // ============================================
+// History (undo/redo)
+// ============================================
+export type ImageRef = string // hash key into image dedup pool
+
+export interface StoreSnapshot {
+  pixelsPerMeter: number | null
+  backgroundImageRef: ImageRef | null
+  objects: PlannerObject[] // deep clone of Map values
+  objectIdCounter: number
+}
+
+export interface FabricObjectSnapshot {
+  id: number
+  type: ObjectType
+  fabricState: Record<string, unknown> // output of getFabricState(id)
+}
+
+export interface HistorySnapshot {
+  storeSnapshot: StoreSnapshot
+  fabricSnapshots: FabricObjectSnapshot[]
+  timestamp: number
+}
+
+export interface HistoryState {
+  canUndo: boolean
+  canRedo: boolean
+  undoCount: number
+  redoCount: number
+}
+
+// ============================================
 // Serialization (JSON export/import)
 // ============================================
 interface SerializedBase {
@@ -149,7 +180,7 @@ export type SerializedObject =
   | SerializedMask
   | SerializedImage
 
-export interface SerializedProject {
+export interface SerializedProjectBase {
   version: number
   pixelsPerMeter: number | null
   backgroundImage: string | null
@@ -157,6 +188,14 @@ export interface SerializedProject {
   objects: SerializedObject[]
   id?: string // IndexedDB key
 }
+
+export interface SerializedProjectV3 extends SerializedProjectBase {
+  version: 3
+  metadata?: { appVersion?: string; exportedFrom?: string }
+}
+
+// Union keeps backward compat — v2 has no metadata field
+export type SerializedProject = SerializedProjectBase
 
 // ============================================
 // Calibration transient state
@@ -199,6 +238,9 @@ export interface PlannerState {
   // Status
   statusMessage: string
 
+  // History (undo/redo)
+  historyState: HistoryState
+
   // Calibration UI
   calibrationPixelLength: number | null
   showCalibrationInput: boolean
@@ -233,6 +275,9 @@ export interface PlannerActions {
 
   // Status
   setStatusMessage: (msg: string) => void
+
+  // History
+  setHistoryState: (state: HistoryState) => void
 
   // Calibration UI
   setCalibrationPixelLength: (len: number | null) => void
