@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Outdoor Planner',
-  description: 'Design your garden & driveway layout to scale',
+  title: 'Plan the Space',
+  description: 'Design your space to scale',
 }
 
 export default function RootLayout({

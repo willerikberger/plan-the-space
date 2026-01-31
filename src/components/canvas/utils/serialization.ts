@@ -146,7 +146,7 @@ export function serializeProject(
     backgroundImage: backgroundImageData,
     savedAt: new Date().toISOString(),
     objects: serializedObjects,
-    metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
+    metadata: { appVersion: '1.0.0', exportedFrom: 'plan-the-space' },
   } as SerializedProjectV3
 }
 
@@ -223,7 +223,7 @@ export function migrateProject(data: SerializedProject): SerializedProjectV3 {
   return {
     ...rest,
     version: 3,
-    metadata: { exportedFrom: 'outdoor-planner-next' },
+    metadata: { exportedFrom: 'plan-the-space' },
     ...(id ? { id } : {}),
   }
 }

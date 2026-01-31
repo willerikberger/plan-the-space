@@ -29,7 +29,7 @@ describe('validateProjectData', () => {
         backgroundImage: null,
         savedAt: '2024-01-01',
         objects: [],
-        metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
+        metadata: { appVersion: '1.0.0', exportedFrom: 'plan-the-space' },
       }),
     ).toBe(true)
   })
@@ -184,7 +184,7 @@ describe('round-trip serialize -> deserialize', () => {
     expect(project.version).toBe(3)
     expect(project.pixelsPerMeter).toBe(50)
     expect(project.objects).toHaveLength(2)
-    expect((project as SerializedProjectV3).metadata?.exportedFrom).toBe('outdoor-planner-next')
+    expect((project as SerializedProjectV3).metadata?.exportedFrom).toBe('plan-the-space')
 
     const deserialized = deserializeProject(project)
     expect(deserialized.pixelsPerMeter).toBe(50)
@@ -269,7 +269,7 @@ describe('migrateProject', () => {
     }
     const v3 = migrateProject(v2Data)
     expect(v3.version).toBe(3)
-    expect(v3.metadata?.exportedFrom).toBe('outdoor-planner-next')
+    expect(v3.metadata?.exportedFrom).toBe('plan-the-space')
     expect(v3.pixelsPerMeter).toBe(50)
     expect(v3.objects).toEqual([])
   })
@@ -281,7 +281,7 @@ describe('migrateProject', () => {
       backgroundImage: 'data:test',
       savedAt: '2024-06-01',
       objects: [],
-      metadata: { appVersion: '1.0.0', exportedFrom: 'outdoor-planner-next' },
+      metadata: { appVersion: '1.0.0', exportedFrom: 'plan-the-space' },
     }
     const result = migrateProject(v3Data)
     expect(result).toEqual(v3Data)
@@ -294,9 +294,9 @@ describe('migrateProject', () => {
       backgroundImage: null,
       savedAt: '2024-01-01',
       objects: [],
-      id: 'outdoor-planner-project',
+      id: 'plan-the-space-project',
     }
     const v3 = migrateProject(v2Data)
-    expect(v3.id).toBe('outdoor-planner-project')
+    expect(v3.id).toBe('plan-the-space-project')
   })
 })

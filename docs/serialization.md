@@ -14,7 +14,7 @@ Defined in `src/components/canvas/utils/serialization.ts` and `src/lib/storage/`
   id?: string,                         // IndexedDB key (only when stored)
   metadata?: {                         // New in v3
     appVersion?: string,               // e.g. '1.0.0'
-    exportedFrom?: string              // e.g. 'outdoor-planner-next'
+    exportedFrom?: string              // e.g. 'plan-the-space'
   }
 }
 ```
@@ -83,7 +83,7 @@ function migrateProject(data: SerializedProject): SerializedProjectV3
 ```
 
 - If the data is already v3 with `metadata`, it is returned as-is.
-- Otherwise, `version` is set to `3` and `metadata: { exportedFrom: 'outdoor-planner-next' }` is added.
+- Otherwise, `version` is set to `3` and `metadata: { exportedFrom: 'plan-the-space' }` is added.
 
 All load paths (IndexedDB, JSON import) return v3 data after migration. Exported JSON files are always v3.
 
@@ -132,13 +132,13 @@ User clicks Load or Import
 
 ### IndexedDB (`lib/storage/indexeddb.ts`)
 
-Database: `OutdoorPlannerDB`, `DB_VERSION = 2`.
+Database: `PlanTheSpaceDB`, `DB_VERSION = 2`.
 
 **Object stores:**
 
 | Store | Purpose |
 |---|---|
-| `projects` | Saved project data (key: `'outdoor-planner-project'`) |
+| `projects` | Saved project data (key: `'plan-the-space-project'`) |
 | `image-pool` | Deduplicated image data for undo/redo history |
 
 **Project functions:**
@@ -146,7 +146,7 @@ Database: `OutdoorPlannerDB`, `DB_VERSION = 2`.
 | Function | Description |
 |---|---|
 | `openDatabase()` | Opens DB v2, creates `projects` and `image-pool` stores on upgrade |
-| `saveProject(data)` | Stores project with key `'outdoor-planner-project'` |
+| `saveProject(data)` | Stores project with key `'plan-the-space-project'` |
 | `loadProject()` | Retrieves saved project, applies `migrateProject()`, or returns `null` |
 | `clearProject()` | Deletes saved project |
 | `checkProjectExists()` | Returns project data or `null` (with error handling) |
@@ -164,7 +164,7 @@ Database: `OutdoorPlannerDB`, `DB_VERSION = 2`.
 
 | Function | Description |
 |---|---|
-| `downloadProjectAsJson(data)` | Triggers browser download as `outdoor-planner-YYYY-MM-DD.json` |
+| `downloadProjectAsJson(data)` | Triggers browser download as `plan-the-space-YYYY-MM-DD.json` |
 | `importProjectFromFile(file)` | Reads JSON file, validates, returns `SerializedProject` |
 
 ### Auto-Save

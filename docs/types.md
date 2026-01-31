@@ -222,7 +222,7 @@ interface SerializedProjectV3 extends SerializedProjectBase {
   version: 3
   metadata?: {
     appVersion?: string          // e.g. '1.0.0'
-    exportedFrom?: string        // e.g. 'outdoor-planner-next'
+    exportedFrom?: string        // e.g. 'plan-the-space'
   }
 }
 

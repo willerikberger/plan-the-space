@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Outdoor Planner Next -- a canvas-based tool for designing garden and driveway layouts to scale. Built with Next.js 16 App Router, Fabric.js for the HTML5 canvas, and Zustand for state.
+Plan the Space -- a canvas-based tool for designing spaces to scale. Built with Next.js 16 App Router, Fabric.js for the HTML5 canvas, and Zustand for state.
 
 ## Commands
 

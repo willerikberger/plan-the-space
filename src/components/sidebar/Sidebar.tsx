@@ -50,8 +50,8 @@ export function Sidebar(props: SidebarProps) {
 
   return (
     <aside className="w-[340px] bg-[#16213e] p-5 overflow-y-auto shrink-0 border-r border-[#0f3460]">
-      <h1 className="text-xl font-bold text-[#e94560] mb-1">Outdoor Planner</h1>
-      <p className="text-xs text-[#888] mb-6">Design your garden & driveway layout to scale</p>
+      <h1 className="text-xl font-bold text-[#e94560] mb-1">Plan the Space</h1>
+      <p className="text-xs text-[#888] mb-6">Design your space to scale</p>
 
       {/* Mode Toggle */}
       <div className="mb-4">

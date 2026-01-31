@@ -1,6 +1,6 @@
-# Outdoor Planner
+# Plan the Space
 
-Design your garden and driveway layout to scale using a canvas-based planning tool.
+Design your space to scale using a canvas-based planning tool.
 
 <!-- Screenshot placeholder: add a screenshot of the app here -->
 
