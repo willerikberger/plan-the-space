@@ -5,7 +5,8 @@
 ```
 app/page.tsx
   ClientLoader (dynamic import, ssr: false)
-    PlannerApp
+    ErrorBoundary (catches render errors, offers reload)
+      PlannerApp
       Sidebar
         CalibrationPanel
         ShapePanel
@@ -52,21 +53,31 @@ Fabric event (mouse:down, object:modified, etc.)
     --> triggerAutoSave() if applicable
 ```
 
+Canvas-level operations are extracted into utility modules:
+
+- `canvasOrchestration.ts` — pure functions: `getFabricState`, `clearCanvas`, `reorderObjects`, `deleteObject`, `loadProjectFromData`
+- `autoSave.ts` — `scheduleAutoSave` (debounced timer) and `handleBeforeUnload` (best-effort save on page close)
+
 ## State Management Split
 
 The app separates state into two layers:
 
-| Layer | Location | Contents | Serializable |
-|---|---|---|---|
-| Zustand store | `lib/store.ts` | Object metadata, mode, scale, colors, status | Yes |
-| FabricRefs | `allFabricRefsRef` (React ref in PlannerCanvas) | Mutable Fabric.js canvas objects (Rect, Line, FabricText, FabricImage) | No |
+| Layer         | Location                                        | Contents                                                               | Serializable |
+| ------------- | ----------------------------------------------- | ---------------------------------------------------------------------- | ------------ |
+| Zustand store | `lib/store.ts`                                  | Object metadata, mode, scale, colors, status                           | Yes          |
+| FabricRefs    | `allFabricRefsRef` (React ref in PlannerCanvas) | Mutable Fabric.js canvas objects (Rect, Line, FabricText, FabricImage) | No           |
 
 Fabric objects cannot go into Zustand because they are mutable class instances with circular references. The FabricRefs `Map<number, FabricRefs>` is a React ref that lives alongside the store, keyed by object ID.
 
 ## Mode System
 
 ```typescript
-type PlannerMode = 'normal' | 'calibrating' | 'drawing-line' | 'drawing-mask' | 'cleanup'
+type PlannerMode =
+  | "normal"
+  | "calibrating"
+  | "drawing-line"
+  | "drawing-mask"
+  | "cleanup";
 ```
 
 Mode transitions:
@@ -96,41 +107,40 @@ DRAWING-MASK --> CLEANUP    (finish/cancel mask)
 
 ## Undo/Redo (History)
 
-Snapshot-based hybrid approach that pairs Zustand store state with Fabric canvas state.
+Snapshot-based hybrid approach that pairs Zustand store state with Fabric canvas state. The implementation in `lib/history.ts` is layered:
 
-**HistoryManager** (`lib/history.ts`): pure TypeScript class, no React dependency.
-
-- **Stack**: array of `HistorySnapshot` entries, max `HISTORY_LIMIT` (50)
-- **Pointer**: integer index into the stack; undo decrements, redo increments
-- **Image deduplication**: images are stored once in an IDB-backed `image-pool` object store, referenced by fingerprint (`img_${length}_${first64}_${last64}`). Reference counting tracks usage; images are deleted from IDB when their refcount hits zero.
-- **LRU cache**: in-memory cache of last 3 images (`IMAGE_LRU_SIZE`) for fast restore without IDB reads
+1. **HistoryStack** — immutable data structure (`{ readonly entries, readonly pointer }`) manipulated by pure functions (`pushSnapshot`, `undoStack`, `redoStack`, `getStackState`). Max `HISTORY_LIMIT` (50) entries; eviction returns discarded snapshots so their images can be released.
+2. **ImagePool** — class providing IDB-backed image deduplication with reference counting. Images are stored once under a fingerprint key (`img_${length}_${first64}_${last64}`). An LRU in-memory cache (`IMAGE_LRU_SIZE` = 3) provides fast resolution without IDB reads.
+3. **HistoryManager** — wrapper composing `HistoryStack` + `ImagePool`, no React dependency. Exposes `push()`, `undo()`, `redo()`, `getState()`, `reset()`. Automatically releases images from discarded or evicted snapshots.
 
 **Mode guard**: snapshots are only captured in `normal` or `cleanup` modes, and skipped when `isRestoringRef` is true (prevents nested captures during restore).
 
 **Snapshot capture triggers:**
 
-| Trigger | Hook/Method |
-|---|---|
-| Add/delete shape | `addShapeWithHistory`, `deleteSelected` |
-| Add/delete line | line drawing finish, `deleteSelected` |
-| Add/delete mask | mask drawing finish, `deleteSelected` |
-| Load background image | `loadBackgroundImage` |
-| Add overlay/cleanup image | `addOverlayImage`, `addCleanupImage` |
-| Apply calibration | `applyCalibration` |
-| Object modified (move/scale/rotate) | `object:modified` handler |
-| Reorder objects | `moveObjectUp`, `moveObjectDown` |
-| Clear all | `clearAll` |
-| Load/import project | after `resetHistory()` + project load |
+| Trigger                             | Hook/Method                             |
+| ----------------------------------- | --------------------------------------- |
+| Add/delete shape                    | `addShapeWithHistory`, `deleteSelected` |
+| Add/delete line                     | line drawing finish, `deleteSelected`   |
+| Add/delete mask                     | mask drawing finish, `deleteSelected`   |
+| Load background image               | `loadBackgroundImage`                   |
+| Add overlay/cleanup image           | `addOverlayImage`, `addCleanupImage`    |
+| Apply calibration                   | `applyCalibration`                      |
+| Object modified (move/scale/rotate) | `object:modified` handler               |
+| Reorder objects                     | `moveObjectUp`, `moveObjectDown`        |
+| Clear all                           | `clearAll`                              |
+| Load/import project                 | after `resetHistory()` + project load   |
 
 ## Serialization Strategy
 
 **Export (save/export):**
+
 1. Iterate store objects
 2. For each, call `getFabricState(id)` to extract position/scale/rotation from the Fabric object
 3. `serializeObject()` merges metadata + Fabric state into `SerializedObject`
 4. Wrap in `SerializedProject` (version 3, timestamp, background image data, metadata)
 
 **Import (load/import):**
+
 1. `deserializeProject()` splits JSON into `PlannerObject[]` (store) + `SerializedObject[]` (for Fabric reconstruction)
 2. `loadProject()` bulk-loads metadata into the store
 3. Each hook's `load*()` function (e.g. `shapes.loadShape`, `lines.loadLine`) reconstructs Fabric objects from the serialized data

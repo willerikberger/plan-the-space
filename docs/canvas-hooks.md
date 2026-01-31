@@ -4,18 +4,18 @@ All hooks live in `src/components/canvas/hooks/` and are composed inside `Planne
 
 ## Hook Summary
 
-| Hook | File | Purpose |
-|---|---|---|
-| `useFabricCanvas` | `useFabricCanvas.ts` | Initialize Fabric canvas, handle resize and cleanup |
-| `usePanZoom` | `usePanZoom.ts` | Mouse wheel zoom (0.1x--10x), alt-drag / empty-space pan |
-| `useCalibration` | `useCalibration.ts` | Draw calibration line, calculate pixels-per-meter |
-| `useShapes` | `useShapes.ts` | Create/load shape rects with name + dimension labels |
-| `useLines` | `useLines.ts` | Draw distance lines with 45-degree snapping and meter labels |
-| `useImages` | `useImages.ts` | Load background image, add overlay images |
-| `useCleanup` | `useCleanup.ts` | Cleanup mode: hide objects, draw masks, add bg images |
-| `useCanvasEvents` | `useCanvasEvents.ts` | Central event dispatcher: routes mouse/object events by mode |
-| `useKeyboardShortcuts` | `useKeyboardShortcuts.ts` | Delete/Backspace, Escape, undo/redo key handling |
-| `useHistory` | `useHistory.ts` | Snapshot-based undo/redo with image deduplication |
+| Hook                   | File                      | Purpose                                                      |
+| ---------------------- | ------------------------- | ------------------------------------------------------------ |
+| `useFabricCanvas`      | `useFabricCanvas.ts`      | Initialize Fabric canvas, handle resize and cleanup          |
+| `usePanZoom`           | `usePanZoom.ts`           | Mouse wheel zoom (0.1x--10x), alt-drag / empty-space pan     |
+| `useCalibration`       | `useCalibration.ts`       | Draw calibration line, calculate pixels-per-meter            |
+| `useShapes`            | `useShapes.ts`            | Create/load shape rects with name + dimension labels         |
+| `useLines`             | `useLines.ts`             | Draw distance lines with 45-degree snapping and meter labels |
+| `useImages`            | `useImages.ts`            | Load background image, add overlay images                    |
+| `useCleanup`           | `useCleanup.ts`           | Cleanup mode: hide objects, draw masks, add bg images        |
+| `useCanvasEvents`      | `useCanvasEvents.ts`      | Central event dispatcher: routes mouse/object events by mode |
+| `useKeyboardShortcuts` | `useKeyboardShortcuts.ts` | Delete/Backspace, Escape, undo/redo key handling             |
+| `useHistory`           | `useHistory.ts`           | Snapshot-based undo/redo with image deduplication            |
 
 ## Hook Composition
 
@@ -124,46 +124,52 @@ All hooks that manage objects receive `fabricCanvasRef` and a typed cast of `all
 
 Registers handlers for:
 
-| Fabric Event | Behavior |
-|---|---|
-| `mouse:down` | Route by mode: calibration click, mask start, line start, or pan start |
-| `mouse:move` | Route by mode: update calibration line, mask rect, drawing line, or pan |
-| `mouse:up` | Route by mode: finish calibration, mask, line, or end pan |
-| `object:modified` | Update shape dims/labels or line label, trigger auto-save |
-| `object:scaling` | Live-update shape dimensions during scale |
-| `object:moving` | Update shape/line label positions |
-| `object:rotating` | Update shape label positions |
+| Fabric Event      | Behavior                                                                |
+| ----------------- | ----------------------------------------------------------------------- |
+| `mouse:down`      | Route by mode: calibration click, mask start, line start, or pan start  |
+| `mouse:move`      | Route by mode: update calibration line, mask rect, drawing line, or pan |
+| `mouse:up`        | Route by mode: finish calibration, mask, line, or end pan               |
+| `object:modified` | Update shape dims/labels or line label, trigger auto-save               |
+| `object:scaling`  | Live-update shape dimensions during scale                               |
+| `object:moving`   | Update shape/line label positions                                       |
+| `object:rotating` | Update shape label positions                                            |
 
 ### useKeyboardShortcuts
 
 **Params:** `fabricCanvasRef, { cancelCalibration, cancelLineDrawing, deleteSelected, undo, redo }`
 **Returns:** void (registers/unregisters keydown listener)
 
+**Stable handler ref pattern**: A single `keydown` listener is registered on mount (empty dependency array). A `handlerRef` is updated synchronously each render with the latest closure. The listener delegates to `handlerRef.current`, so it always sees fresh state without re-registering -- no listener churn.
+
 All shortcuts are skipped when an `<input>` or `<textarea>` has focus.
 
-| Key | Action |
-|---|---|
-| `Delete` / `Backspace` | Delete selected objects |
-| `Escape` | Cancel current mode (calibration, line drawing, drawing-mask) |
-| `Ctrl+Z` / `Cmd+Z` | Undo |
-| `Ctrl+Shift+Z` / `Cmd+Shift+Z` | Redo |
-| `Ctrl+Y` / `Cmd+Y` | Redo (alternate) |
+| Key                            | Action                                                        |
+| ------------------------------ | ------------------------------------------------------------- |
+| `Delete` / `Backspace`         | Delete selected objects                                       |
+| `Escape`                       | Cancel current mode (calibration, line drawing, drawing-mask) |
+| `Ctrl+Z` / `Cmd+Z`             | Undo                                                          |
+| `Ctrl+Shift+Z` / `Cmd+Shift+Z` | Redo                                                          |
+| `Ctrl+Y` / `Cmd+Y`             | Redo (alternate)                                              |
 
 ### useHistory
 
 **Params:** `{ getFabricState, restoreFromSnapshot }`
 **Returns:** `{ captureSnapshot, undo, redo, resetHistory, isRestoringRef, managerRef }`
 
-| Function | Description |
-|---|---|
+| Function            | Description                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `captureSnapshot()` | Captures paired Zustand + Fabric state. Only runs in `normal`/`cleanup` modes; skipped when `isRestoringRef` is true. Registers image data in IDB pool for deduplication. |
-| `undo()` | Decrements history pointer, restores previous snapshot. Sets `isRestoringRef` during restore to prevent nested captures. |
-| `redo()` | Increments history pointer, restores next snapshot. Same guarding as undo. |
-| `resetHistory()` | Clears history stack and IDB image pool. Called on project load/import. |
-| `isRestoringRef` | `React.MutableRefObject<boolean>` -- true during restore, prevents snapshot capture loops |
-| `managerRef` | `React.MutableRefObject<HistoryManager>` -- direct access to the `HistoryManager` instance |
+| `undo()`            | Decrements history pointer, restores previous snapshot. Sets `isRestoringRef` during restore to prevent nested captures.                                                  |
+| `redo()`            | Increments history pointer, restores next snapshot. Same guarding as undo.                                                                                                |
+| `resetHistory()`    | Clears history stack and IDB image pool. Called on project load/import.                                                                                                   |
+| `isRestoringRef`    | `React.MutableRefObject<boolean>` -- true during restore, prevents snapshot capture loops                                                                                 |
+| `managerRef`        | `React.MutableRefObject<HistoryManager>` -- direct access to the `HistoryManager` instance                                                                                |
 
-Backed by `HistoryManager` (`lib/history.ts`): pure TypeScript class with a 50-entry snapshot stack, pointer-based navigation, and IDB-backed image deduplication with LRU cache (3 entries).
+Backed by a layered architecture in `lib/history.ts`:
+
+1. **HistoryStack** — immutable data structure manipulated by pure functions (`pushSnapshot`, `undoStack`, `redoStack`, `getStackState`, `getCurrentSnapshot`). 50-entry limit enforced by `HISTORY_LIMIT`.
+2. **ImagePool** — class managing IDB-backed image deduplication with reference counting and an LRU in-memory cache (3 entries). Accepts an optional `StorageAdapter`.
+3. **HistoryManager** — wrapper composing `HistoryStack` + `ImagePool`. Provides `push()`, `undo()`, `redo()`, `getState()`, `reset()`. Automatically releases images from discarded or evicted snapshots.
 
 ## PlannerCanvasHandle
 
@@ -172,41 +178,41 @@ The imperative API exposed by `PlannerCanvas` via `forwardRef`:
 ```typescript
 interface PlannerCanvasHandle {
   // Calibration
-  startCalibration: () => void
-  cancelCalibration: () => void
-  applyCalibration: (meters: number) => void
+  startCalibration: () => void;
+  cancelCalibration: () => void;
+  applyCalibration: (meters: number) => void;
   // Shapes
-  addShape: (name: string, widthM: number, heightM: number) => void
+  addShape: (name: string, widthM: number, heightM: number) => void;
   // Lines
-  startLineDrawing: () => void
-  cancelLineDrawing: () => void
+  startLineDrawing: () => void;
+  cancelLineDrawing: () => void;
   // Images
-  loadBackgroundImage: (file: File) => void
-  addOverlayImage: (file: File) => void
+  loadBackgroundImage: (file: File) => void;
+  addOverlayImage: (file: File) => void;
   // Cleanup
-  enterCleanupMode: () => void
-  exitCleanupMode: () => void
-  startDrawingMask: () => void
-  addCleanupImage: (file: File) => void
+  enterCleanupMode: () => void;
+  exitCleanupMode: () => void;
+  startDrawingMask: () => void;
+  addCleanupImage: (file: File) => void;
   // Objects
-  selectObject: (id: number) => void
-  deleteObject: (id: number) => void
-  deleteSelected: () => void
-  clearAll: () => void
-  moveObjectUp: (id: number) => void
-  moveObjectDown: (id: number) => void
-  selectedObjectId: () => number | null
+  selectObject: (id: number) => void;
+  deleteObject: (id: number) => void;
+  deleteSelected: () => void;
+  clearAll: () => void;
+  moveObjectUp: (id: number) => void;
+  moveObjectDown: (id: number) => void;
+  selectedObjectId: () => number | null;
   // History
-  undo: () => Promise<void>
-  redo: () => Promise<void>
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
   // Storage
-  save: () => Promise<void>
-  load: () => Promise<void>
-  clearStorage: () => Promise<void>
-  exportJson: () => void
-  importJson: (file: File) => Promise<void>
-  toggleAutoSave: () => void
+  save: () => Promise<void>;
+  load: () => Promise<void>;
+  clearStorage: () => Promise<void>;
+  exportJson: () => void;
+  importJson: (file: File) => Promise<void>;
+  toggleAutoSave: () => void;
   // Reorder
-  reorderObjects: () => void
+  reorderObjects: () => void;
 }
 ```

@@ -1,141 +1,205 @@
-import type { SerializedProject } from '@/lib/types'
-import { DB_NAME, DB_VERSION, STORE_NAME, IMAGE_POOL_STORE, STORAGE_KEY } from '@/lib/constants'
-import { migrateProject } from '@/components/canvas/utils/serialization'
+import type { SerializedProject } from "@/lib/types";
+import type { StorageAdapter, DBMigration } from "./storageAdapter";
+import {
+  DB_NAME,
+  DB_VERSION,
+  STORE_NAME,
+  IMAGE_POOL_STORE,
+  STORAGE_KEY,
+} from "@/lib/constants";
+import { migrateProject } from "@/components/canvas/utils/serialization";
 
-export function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result
+// ============================================
+// Schema migrations
+// ============================================
+// Each migration handles upgrading from a specific DB version.
+// They run in ascending `fromVersion` order during onupgradeneeded.
+
+const migrations: readonly DBMigration[] = [
+  {
+    // Fresh install (version 0 -> 1): create the projects store
+    fromVersion: 0,
+    migrate(db) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
+    },
+  },
+  {
+    // Version 1 -> 2: add the image-pool store
+    fromVersion: 1,
+    migrate(db) {
       if (!db.objectStoreNames.contains(IMAGE_POOL_STORE)) {
-        db.createObjectStore(IMAGE_POOL_STORE)
+        db.createObjectStore(IMAGE_POOL_STORE);
       }
-    }
-  })
+    },
+  },
+];
+
+// ============================================
+// Centralized DB open with versioned migrations
+// ============================================
+
+function openDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      const tx = (event.target as IDBOpenDBRequest).transaction!;
+      const oldVersion = event.oldVersion;
+
+      // Run every migration whose fromVersion >= oldVersion
+      for (const migration of migrations) {
+        if (migration.fromVersion >= oldVersion) {
+          migration.migrate(db, tx);
+        }
+      }
+    };
+  });
 }
 
-export async function saveProject(data: SerializedProject): Promise<void> {
-  const db = await openDatabase()
+// ============================================
+// Low-level IDB helpers (reduce boilerplate)
+// ============================================
+
+/** Run a read-only operation on a single object store. */
+async function idbRead<T>(
+  storeName: string,
+  operation: (store: IDBObjectStore) => IDBRequest,
+): Promise<T | undefined> {
+  const db = await openDatabase();
   try {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const projectData = { ...data, id: STORAGE_KEY }
-    await new Promise<void>((resolve, reject) => {
-      const request = store.put(projectData)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
-    })
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    return await new Promise<T | undefined>((resolve, reject) => {
+      const request = operation(store);
+      request.onsuccess = () => resolve(request.result as T | undefined);
+      request.onerror = () => reject(request.error);
+    });
   } finally {
-    db.close()
+    db.close();
   }
+}
+
+/** Run a read-write operation on a single object store. */
+async function idbWrite(
+  storeName: string,
+  operation: (store: IDBObjectStore) => IDBRequest,
+): Promise<void> {
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    await new Promise<void>((resolve, reject) => {
+      const request = operation(store);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+// ============================================
+// IndexedDB adapter factory
+// ============================================
+
+export function createIndexedDBAdapter(): StorageAdapter {
+  return {
+    async save(project: SerializedProject): Promise<void> {
+      const projectData = { ...project, id: STORAGE_KEY };
+      await idbWrite(STORE_NAME, (store) => store.put(projectData));
+    },
+
+    async load(): Promise<SerializedProject | null> {
+      const data = await idbRead<SerializedProject>(STORE_NAME, (store) =>
+        store.get(STORAGE_KEY),
+      );
+      if (!data) return null;
+      return migrateProject(data);
+    },
+
+    async clear(): Promise<void> {
+      await idbWrite(STORE_NAME, (store) => store.delete(STORAGE_KEY));
+    },
+
+    async saveImage(ref: string, data: string): Promise<void> {
+      await idbWrite(IMAGE_POOL_STORE, (store) => store.put(data, ref));
+    },
+
+    async loadImage(ref: string): Promise<string | null> {
+      const result = await idbRead<string>(IMAGE_POOL_STORE, (store) =>
+        store.get(ref),
+      );
+      return result ?? null;
+    },
+
+    async deleteImage(ref: string): Promise<void> {
+      await idbWrite(IMAGE_POOL_STORE, (store) => store.delete(ref));
+    },
+
+    async clearImages(): Promise<void> {
+      await idbWrite(IMAGE_POOL_STORE, (store) => store.clear());
+    },
+  };
+}
+
+// ============================================
+// Default adapter instance
+// ============================================
+
+let defaultAdapter: StorageAdapter | null = null;
+
+export function getDefaultAdapter(): StorageAdapter {
+  if (!defaultAdapter) {
+    defaultAdapter = createIndexedDBAdapter();
+  }
+  return defaultAdapter;
+}
+
+// ============================================
+// Backward-compatible function exports
+// ============================================
+// These delegate to the default adapter so existing callers continue to work.
+
+export async function saveProject(data: SerializedProject): Promise<void> {
+  return getDefaultAdapter().save(data);
 }
 
 export async function loadProject(): Promise<SerializedProject | null> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(STORE_NAME, 'readonly')
-    const store = tx.objectStore(STORE_NAME)
-    const data = await new Promise<SerializedProject | undefined>((resolve, reject) => {
-      const request = store.get(STORAGE_KEY)
-      request.onsuccess = () => resolve(request.result as SerializedProject | undefined)
-      request.onerror = () => reject(request.error)
-    })
-    if (!data) return null
-    return migrateProject(data)
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().load();
 }
 
 export async function clearProject(): Promise<void> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    await new Promise<void>((resolve, reject) => {
-      const request = store.delete(STORAGE_KEY)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().clear();
 }
 
 export async function checkProjectExists(): Promise<SerializedProject | null> {
   try {
-    return await loadProject()
+    return await getDefaultAdapter().load();
   } catch {
-    return null
+    return null;
   }
 }
 
-// ============================================
-// Image pool operations (for HistoryManager)
-// ============================================
-
 export async function saveImageData(ref: string, data: string): Promise<void> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(IMAGE_POOL_STORE, 'readwrite')
-    const store = tx.objectStore(IMAGE_POOL_STORE)
-    await new Promise<void>((resolve, reject) => {
-      const request = store.put(data, ref)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().saveImage(ref, data);
 }
 
 export async function loadImageData(ref: string): Promise<string | null> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(IMAGE_POOL_STORE, 'readonly')
-    const store = tx.objectStore(IMAGE_POOL_STORE)
-    const result = await new Promise<string | undefined>((resolve, reject) => {
-      const request = store.get(ref)
-      request.onsuccess = () => resolve(request.result as string | undefined)
-      request.onerror = () => reject(request.error)
-    })
-    return result ?? null
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().loadImage(ref);
 }
 
 export async function deleteImageData(ref: string): Promise<void> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(IMAGE_POOL_STORE, 'readwrite')
-    const store = tx.objectStore(IMAGE_POOL_STORE)
-    await new Promise<void>((resolve, reject) => {
-      const request = store.delete(ref)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().deleteImage(ref);
 }
 
 export async function clearImagePool(): Promise<void> {
-  const db = await openDatabase()
-  try {
-    const tx = db.transaction(IMAGE_POOL_STORE, 'readwrite')
-    const store = tx.objectStore(IMAGE_POOL_STORE)
-    await new Promise<void>((resolve, reject) => {
-      const request = store.clear()
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
+  return getDefaultAdapter().clearImages();
 }
+
+// Re-export types for convenience
+export type { StorageAdapter, DBMigration } from "./storageAdapter";
+export { createInMemoryAdapter } from "./storageAdapter";

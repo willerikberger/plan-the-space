@@ -1,39 +1,44 @@
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { useShallow } from 'zustand/react/shallow'
-import { usePlannerStore, selectVisibleObjects } from '@/lib/store'
-import type { PlannerObject } from '@/lib/types'
+import { Button } from "@/components/ui/button";
+import { useShallow } from "zustand/react/shallow";
+import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
+import type { PlannerObject } from "@/lib/types";
 
 interface ObjectListProps {
-  selectedObjectId: number | null
-  onSelect: (id: number) => void
-  onDelete: (id: number) => void
-  onMoveUp: (id: number) => void
-  onMoveDown: (id: number) => void
+  selectedObjectId: number | null;
+  onSelect: (id: number) => void;
+  onDelete: (id: number) => void;
+  onMoveUp: (id: number) => void;
+  onMoveDown: (id: number) => void;
 }
 
-function ObjectIcon({ type }: { type: PlannerObject['type'] }) {
+function ObjectIcon({ type }: { type: PlannerObject["type"] }) {
   switch (type) {
-    case 'shape':
-      return <span>\u2b1c</span>
-    case 'line':
-      return <span>\ud83d\udccf</span>
+    case "shape":
+      return <span>\u2b1c</span>;
+    case "line":
+      return <span>\ud83d\udccf</span>;
     default:
-      return <span>\ud83d\uddbc\ufe0f</span>
+      return <span>\ud83d\uddbc\ufe0f</span>;
   }
 }
 
 function ObjectDims({ obj }: { obj: PlannerObject }) {
-  if (obj.type === 'shape') return <>{obj.widthM}m &times; {obj.heightM}m</>
-  if (obj.type === 'line') return <>{obj.lengthM}m</>
-  return <>Image</>
+  if (obj.type === "shape")
+    return (
+      <>
+        {obj.widthM}m &times; {obj.heightM}m
+      </>
+    );
+  if (obj.type === "line") return <>{obj.lengthM}m</>;
+  return <>Image</>;
 }
 
 function objectColor(obj: PlannerObject): string | null {
-  if (obj.type === 'shape') return obj.color.replace('0.6', '1')
-  if (obj.type === 'line') return obj.color
-  return null
+  if (obj.type === "shape") return obj.color.replace("0.6", "1");
+  if (obj.type === "line") return obj.color;
+  return null;
 }
 
 export function ObjectList({
@@ -43,28 +48,28 @@ export function ObjectList({
   onMoveUp,
   onMoveDown,
 }: ObjectListProps) {
-  const visibleObjects = usePlannerStore(useShallow(selectVisibleObjects))
+  const visibleObjects = usePlannerStore(useShallow(selectVisibleObjects));
 
   return (
     <div className="mb-6">
-      <h2 className="text-xs uppercase tracking-wide text-[#e94560] mb-3 pb-2 border-b border-[#0f3460] font-semibold flex items-center gap-2">
+      <h2 className="text-xs uppercase tracking-wide text-planner-primary mb-3 pb-2 border-b border-planner-accent font-semibold flex items-center gap-2">
         Objects
-        <span className="text-[10px] px-1.5 py-0.5 bg-[#0f3460] rounded text-[#888]">
+        <span className="text-[10px] px-1.5 py-0.5 bg-planner-accent rounded text-planner-text-muted">
           {visibleObjects.length}
         </span>
       </h2>
       {visibleObjects.length === 0 ? (
-        <p className="text-[#666] text-sm">No objects added yet</p>
+        <p className="text-planner-text-dim text-sm">No objects added yet</p>
       ) : (
         <div className="space-y-2">
           {visibleObjects.map((obj) => {
-            const isSelected = selectedObjectId === obj.id
-            const color = objectColor(obj)
+            const isSelected = selectedObjectId === obj.id;
+            const color = objectColor(obj);
             return (
               <div
                 key={obj.id}
-                className={`flex items-center gap-2 p-2.5 bg-[#0f3460] rounded-md text-sm ${
-                  isSelected ? 'border-2 border-[#e94560]' : ''
+                className={`flex items-center gap-2 p-2.5 bg-planner-accent rounded-md text-sm ${
+                  isSelected ? "border-2 border-planner-primary" : ""
                 }`}
               >
                 <span className="w-5 text-center shrink-0">
@@ -78,7 +83,7 @@ export function ObjectList({
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="truncate">{obj.name}</div>
-                  <div className="text-[#888] text-[10px]">
+                  <div className="text-planner-text-muted text-[10px]">
                     <ObjectDims obj={obj} />
                   </div>
                 </div>
@@ -119,10 +124,10 @@ export function ObjectList({
                   </Button>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -79,7 +79,7 @@ Defined in `src/components/canvas/utils/serialization.ts` and `src/lib/storage/`
 The current format is version 3. V2 projects (from the vanilla JavaScript app) are transparently migrated on load/import via `migrateProject()`:
 
 ```typescript
-function migrateProject(data: SerializedProject): SerializedProjectV3
+function migrateProject(data: SerializedProject): SerializedProjectV3;
 ```
 
 - If the data is already v3 with `metadata`, it is returned as-is.
@@ -130,42 +130,50 @@ User clicks Load or Import
 
 ## Storage
 
+### StorageAdapter (`lib/storage/storageAdapter.ts`)
+
+The `StorageAdapter` interface abstracts all persistence operations (project CRUD + image pool). Two implementations exist:
+
+| Adapter   | Factory                    | Backing Store             | Use Case   |
+| --------- | -------------------------- | ------------------------- | ---------- |
+| IndexedDB | `createIndexedDBAdapter()` | `PlanTheSpaceDB` v2 (IDB) | Production |
+| In-memory | `createInMemoryAdapter()`  | Plain `Map`s              | Tests, SSR |
+
+The IndexedDB adapter uses a `DBMigration` registry pattern for schema upgrades. Each migration has a `fromVersion` number and a `migrate(db, tx)` function. Migrations run in ascending `fromVersion` order during `onupgradeneeded`.
+
 ### IndexedDB (`lib/storage/indexeddb.ts`)
 
 Database: `PlanTheSpaceDB`, `DB_VERSION = 2`.
 
 **Object stores:**
 
-| Store | Purpose |
-|---|---|
-| `projects` | Saved project data (key: `'plan-the-space-project'`) |
-| `image-pool` | Deduplicated image data for undo/redo history |
+| Store        | Purpose                                              |
+| ------------ | ---------------------------------------------------- |
+| `projects`   | Saved project data (key: `'plan-the-space-project'`) |
+| `image-pool` | Deduplicated image data for undo/redo history        |
 
-**Project functions:**
+**Exported functions** (backward-compatible wrappers that delegate to a lazily-created default adapter):
 
-| Function | Description |
-|---|---|
-| `openDatabase()` | Opens DB v2, creates `projects` and `image-pool` stores on upgrade |
-| `saveProject(data)` | Stores project with key `'plan-the-space-project'` |
-| `loadProject()` | Retrieves saved project, applies `migrateProject()`, or returns `null` |
-| `clearProject()` | Deletes saved project |
-| `checkProjectExists()` | Returns project data or `null` (with error handling) |
+| Function                   | Description                                                            |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `getDefaultAdapter()`      | Returns (or creates) the singleton `StorageAdapter` for IndexedDB      |
+| `saveProject(data)`        | Stores project with key `'plan-the-space-project'`                     |
+| `loadProject()`            | Retrieves saved project, applies `migrateProject()`, or returns `null` |
+| `clearProject()`           | Deletes saved project                                                  |
+| `checkProjectExists()`     | Returns project data or `null` (with error handling)                   |
+| `saveImageData(ref, data)` | Stores image data in `image-pool` by fingerprint key                   |
+| `loadImageData(ref)`       | Retrieves image data by fingerprint, or `null`                         |
+| `deleteImageData(ref)`     | Removes image data by fingerprint                                      |
+| `clearImagePool()`         | Clears entire `image-pool` store                                       |
 
-**Image pool functions:**
-
-| Function | Description |
-|---|---|
-| `saveImageData(ref, data)` | Stores image data in `image-pool` by fingerprint key |
-| `loadImageData(ref)` | Retrieves image data by fingerprint, or `null` |
-| `deleteImageData(ref)` | Removes image data by fingerprint |
-| `clearImagePool()` | Clears entire `image-pool` store |
+`HistoryManager` and `ImagePool` accept an optional `StorageAdapter` parameter. In production they use the default IDB adapter; in tests they receive `createInMemoryAdapter()`.
 
 ### JSON Export (`lib/storage/json-export.ts`)
 
-| Function | Description |
-|---|---|
+| Function                      | Description                                                   |
+| ----------------------------- | ------------------------------------------------------------- |
 | `downloadProjectAsJson(data)` | Triggers browser download as `plan-the-space-YYYY-MM-DD.json` |
-| `importProjectFromFile(file)` | Reads JSON file, validates, returns `SerializedProject` |
+| `importProjectFromFile(file)` | Reads JSON file, validates, returns `SerializedProject`       |
 
 ### Auto-Save
 

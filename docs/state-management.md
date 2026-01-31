@@ -4,46 +4,59 @@
 
 Defined in `src/lib/store.ts`. Created with `create<PlannerStore>()`.
 
+### Slice Pattern
+
+The store is composed from four slices using the Zustand slice pattern:
+
+| Slice                                 | State                                                                                             | Key Actions                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `CanvasSlice` (`createCanvasSlice`)   | `mode`, `pixelsPerMeter`, `backgroundImageData`, `calibrationPixelLength`, `showCalibrationInput` | `setMode`, `setPixelsPerMeter`                                              |
+| `ObjectsSlice` (`createObjectsSlice`) | `objects` (`Map<number, PlannerObject>`), `objectIdCounter`                                       | `addObject`, `removeObject`, `updateObject`, `clearObjects`, `nextObjectId` |
+| `UISlice` (`createUISlice`)           | `selectedColor`, `selectedLineColor`, `lineWidth`, `autoSaveEnabled`, `statusMessage`             | `setSelectedColor`, `setLineWidth`, `setStatusMessage`                      |
+| `HistorySlice` (`createHistorySlice`) | `historyState` (`canUndo`, `canRedo`, `undoCount`, `redoCount`)                                   | `setHistoryState`                                                           |
+
+Slices are spread into a single `create<PlannerStore>()` call. Cross-slice actions (`loadProject`, `reset`) access all slice state and are defined at the top level of the store creator.
+
 ### State Shape
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `mode` | `PlannerMode` | `'normal'` | Current interaction mode |
-| `pixelsPerMeter` | `number \| null` | `null` | Scale factor (set via calibration) |
-| `backgroundImageData` | `string \| null` | `null` | Base64 data URL of main background |
-| `objects` | `Map<number, PlannerObject>` | empty Map | All object metadata |
-| `objectIdCounter` | `number` | `0` | Monotonic ID generator |
-| `selectedColor` | `string` | `'rgba(76, 175, 80, 0.6)'` | Current shape fill color |
-| `selectedLineColor` | `string` | `'rgba(244, 67, 54, 1)'` | Current line stroke color |
-| `lineWidth` | `number` | `3` | Line stroke width |
-| `autoSaveEnabled` | `boolean` | `true` | Whether auto-save is active (always on) |
-| `historyState` | `HistoryState` | `{ canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 }` | Undo/redo availability for toolbar buttons |
-| `statusMessage` | `string` | `'Load an image to get started'` | Status bar text |
-| `calibrationPixelLength` | `number \| null` | `null` | Measured pixel distance (calibration UI) |
-| `showCalibrationInput` | `boolean` | `false` | Whether calibration input is visible |
+| Field                    | Type                         | Default                                                          | Description                                |
+| ------------------------ | ---------------------------- | ---------------------------------------------------------------- | ------------------------------------------ |
+| `mode`                   | `PlannerMode`                | `'normal'`                                                       | Current interaction mode                   |
+| `pixelsPerMeter`         | `number \| null`             | `null`                                                           | Scale factor (set via calibration)         |
+| `backgroundImageData`    | `string \| null`             | `null`                                                           | Base64 data URL of main background         |
+| `objects`                | `Map<number, PlannerObject>` | empty Map                                                        | All object metadata                        |
+| `objectIdCounter`        | `number`                     | `0`                                                              | Monotonic ID generator                     |
+| `selectedColor`          | `string`                     | `'rgba(76, 175, 80, 0.6)'`                                       | Current shape fill color                   |
+| `selectedLineColor`      | `string`                     | `'rgba(244, 67, 54, 1)'`                                         | Current line stroke color                  |
+| `lineWidth`              | `number`                     | `3`                                                              | Line stroke width                          |
+| `autoSaveEnabled`        | `boolean`                    | `true`                                                           | Whether auto-save is active (always on)    |
+| `historyState`           | `HistoryState`               | `{ canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 }` | Undo/redo availability for toolbar buttons |
+| `statusMessage`          | `string`                     | `'Load an image to get started'`                                 | Status bar text                            |
+| `calibrationPixelLength` | `number \| null`             | `null`                                                           | Measured pixel distance (calibration UI)   |
+| `showCalibrationInput`   | `boolean`                    | `false`                                                          | Whether calibration input is visible       |
 
 ### Actions
 
-| Action | Signature | Description |
-|---|---|---|
-| `setMode` | `(mode: PlannerMode) => void` | Set interaction mode |
-| `setPixelsPerMeter` | `(ppm: number \| null) => void` | Set scale |
-| `setBackgroundImageData` | `(data: string \| null) => void` | Set background image |
-| `addObject` | `(obj: PlannerObject) => void` | Add object to map |
-| `removeObject` | `(id: number) => void` | Remove object by ID |
-| `updateObject` | `(id: number, partial: Partial<PlannerObject>) => void` | Merge partial update |
-| `clearObjects` | `(typesToClear?: ObjectType[]) => void` | Clear all or specific types |
-| `nextObjectId` | `() => number` | Increment counter, return previous value |
-| `setSelectedColor` | `(color: string) => void` | Set shape color |
-| `setSelectedLineColor` | `(color: string) => void` | Set line color |
-| `setLineWidth` | `(w: number) => void` | Set line width |
-| `setAutoSaveEnabled` | `(enabled: boolean) => void` | Toggle auto-save |
-| `setHistoryState` | `(state: HistoryState) => void` | Update undo/redo availability (called by `useHistory`) |
-| `setStatusMessage` | `(msg: string) => void` | Set status text |
-| `setCalibrationPixelLength` | `(len: number \| null) => void` | Set pixel distance |
-| `setShowCalibrationInput` | `(show: boolean) => void` | Show/hide calibration UI |
-| `loadProject` | `(data: { pixelsPerMeter, backgroundImageData, objects }) => void` | Bulk load from import |
-| `reset` | `() => void` | Reset to initial state |
+| Action                      | Signature                                                          | Description                                            |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `setMode`                   | `(mode: PlannerMode) => void`                                      | Set interaction mode                                   |
+| `setPixelsPerMeter`         | `(ppm: number \| null) => void`                                    | Set scale                                              |
+| `setBackgroundImageData`    | `(data: string \| null) => void`                                   | Set background image                                   |
+| `addObject`                 | `(obj: PlannerObject) => void`                                     | Add object to map                                      |
+| `removeObject`              | `(id: number) => void`                                             | Remove object by ID                                    |
+| `updateObject`              | `(id: number, partial: Partial<PlannerObject>) => void`            | Merge partial update                                   |
+| `clearObjects`              | `(typesToClear?: ObjectType[]) => void`                            | Clear all or specific types                            |
+| `nextObjectId`              | `() => number`                                                     | Increment counter, return previous value               |
+| `setSelectedColor`          | `(color: string) => void`                                          | Set shape color                                        |
+| `setSelectedLineColor`      | `(color: string) => void`                                          | Set line color                                         |
+| `setLineWidth`              | `(w: number) => void`                                              | Set line width                                         |
+| `setAutoSaveEnabled`        | `(enabled: boolean) => void`                                       | Toggle auto-save                                       |
+| `setHistoryState`           | `(state: HistoryState) => void`                                    | Update undo/redo availability (called by `useHistory`) |
+| `setStatusMessage`          | `(msg: string) => void`                                            | Set status text                                        |
+| `setCalibrationPixelLength` | `(len: number \| null) => void`                                    | Set pixel distance                                     |
+| `setShowCalibrationInput`   | `(show: boolean) => void`                                          | Show/hide calibration UI                               |
+| `loadProject`               | `(data: { pixelsPerMeter, backgroundImageData, objects }) => void` | Bulk load from import                                  |
+| `reset`                     | `() => void`                                                       | Reset to initial state                                 |
 
 ### Selectors
 
@@ -58,19 +71,27 @@ selectObjectById(state: PlannerStore, id: number): PlannerObject | undefined
 ### Access Patterns
 
 ```typescript
-// Reactive (in components)
-const mode = usePlannerStore((s) => s.mode)
+// Single-value selector (uses Object.is default equality)
+const mode = usePlannerStore((s) => s.mode);
 
-// Synchronous (in callbacks, event handlers)
-const state = usePlannerStore.getState()
-state.setMode('normal')
+// Multi-value selector (useShallow for shallow comparison)
+const { mode, pixelsPerMeter } = usePlannerStore(
+  useShallow((s) => ({ mode: s.mode, pixelsPerMeter: s.pixelsPerMeter })),
+);
+
+// Synchronous in event handlers and callbacks (no re-render)
+const state = usePlannerStore.getState();
+state.setMode("normal");
 ```
+
+**Selector guidelines**: Use bare selectors for single primitives. Use `useShallow` (from `zustand/react/shallow`) when destructuring multiple values to avoid unnecessary re-renders. Use `getState()` inside event handlers and non-React callbacks.
 
 ## FabricRefs Pattern
 
 ### Why Fabric Objects Can't Live in Zustand
 
 Fabric.js objects (`Rect`, `Line`, `FabricText`, `FabricImage`) are:
+
 - Mutable class instances with internal state
 - Contain circular references (canvas <-> object)
 - Not serializable (methods, DOM references)
@@ -83,7 +104,7 @@ Zustand expects serializable, immutable-style updates. Putting Fabric objects th
 `PlannerCanvas` holds a single React ref:
 
 ```typescript
-const allFabricRefsRef = useRef(new Map<number, AnyFabricRefs>())
+const allFabricRefsRef = useRef(new Map<number, AnyFabricRefs>());
 ```
 
 Each hook receives a typed cast of this ref:
@@ -92,32 +113,44 @@ Each hook receives a typed cast of this ref:
 const shapes = useShapes(
   fabricCanvasRef,
   allFabricRefsRef as React.RefObject<Map<number, ShapeFabricRefs>>,
-)
+);
 ```
 
 ### FabricRefs Types
 
-| Type | Keys | For |
-|---|---|---|
+| Type              | Keys                    | For                                         |
+| ----------------- | ----------------------- | ------------------------------------------- |
 | `ShapeFabricRefs` | `rect`, `label`, `dims` | Shape rectangles with name + dimension text |
-| `LineFabricRefs` | `line`, `label` | Distance lines with length text |
-| `MaskFabricRefs` | `rect` | Cleanup mask rectangles |
-| `ImageFabricRefs` | `image` | Background and overlay images |
+| `LineFabricRefs`  | `line`, `label`         | Distance lines with length text             |
+| `MaskFabricRefs`  | `rect`                  | Cleanup mask rectangles                     |
+| `ImageFabricRefs` | `image`                 | Background and overlay images               |
 
 ### Custom Fabric Properties
 
 Fabric objects carry custom properties for identification:
 
-| Property | Type | Set on | Purpose |
-|---|---|---|---|
-| `objectId` | `number` | Primary objects (rect, line, image) | Links Fabric object to store |
-| `objectType` | `string` | All Fabric objects | Discriminator (`'shape'`, `'line'`, `'mask'`, `'background'`, etc.) |
-| `parentId` | `number` | Labels and dims text | Links child text to parent object |
-| `baseWidthPx` | `number` | Shape rects | Original unscaled width |
-| `baseHeightPx` | `number` | Shape rects | Original unscaled height |
-| `shapeName` | `string` | Shape rects | Display name |
+| Property       | Type     | Set on                              | Purpose                                                             |
+| -------------- | -------- | ----------------------------------- | ------------------------------------------------------------------- |
+| `objectId`     | `number` | Primary objects (rect, line, image) | Links Fabric object to store                                        |
+| `objectType`   | `string` | All Fabric objects                  | Discriminator (`'shape'`, `'line'`, `'mask'`, `'background'`, etc.) |
+| `parentId`     | `number` | Labels and dims text                | Links child text to parent object                                   |
+| `baseWidthPx`  | `number` | Shape rects                         | Original unscaled width                                             |
+| `baseHeightPx` | `number` | Shape rects                         | Original unscaled height                                            |
+| `shapeName`    | `string` | Shape rects                         | Display name                                                        |
 
-Accessed via: `(fabricObject as unknown as Record<string, unknown>).objectId`
+Accessed via typed helpers in `fabricHelpers.ts` (not raw casts):
+
+```typescript
+import {
+  getFabricProp,
+  setFabricProps,
+} from "@/components/canvas/utils/fabricHelpers";
+
+const id = getFabricProp(fabricObject, "objectId"); // number | undefined
+setFabricProps(fabricObject, { objectId: 1, objectType: "shape" });
+```
+
+The `FabricCustomProps` interface in `types.ts` defines all 14+ custom properties with their types. `getFabricProp` and `setFabricProps` centralize the unsafe cast to keep business logic type-safe.
 
 ## Object Lifecycle
 

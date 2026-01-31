@@ -54,6 +54,18 @@
   --color-planner-cleanup: #9b59b6;
   --color-planner-success: #27ae60;
   --color-planner-danger: #c0392b;
+  --color-planner-canvas: #0d1b2a;
+  --color-planner-text: #eeeeee;
+  --color-planner-text-secondary: #aaaaaa;
+  --color-planner-text-muted: #888888;
+  --color-planner-text-dim: #666666;
+  --color-planner-text-disabled: #444444;
+  --color-planner-hover: #1a4a7a;
+  --color-planner-green: #4ade80;
+  --color-planner-cleanup-bg: #2d1f3d;
+  --color-planner-cleanup-hover: #2ecc71;
+  --color-planner-calibration-hover: #f1c40f;
+  --color-planner-danger-alt: #e74c3c;
 }
 
 /* Dark theme (always active for this app) */
@@ -93,15 +105,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
   }
 }
 
 /* Pulse animation for active modes */
 @keyframes mode-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .animate-mode-pulse {
