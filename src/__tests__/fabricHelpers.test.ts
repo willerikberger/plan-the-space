@@ -461,8 +461,9 @@ describe("createLineLabel", () => {
     expect(label.originY).toBe("center");
     expect(label.selectable).toBe(false);
     expect(label.evented).toBe(false);
-    expect(label.backgroundColor).toBe("rgba(0,0,0,0.5)");
-    expect(label.padding).toBe(3);
+    expect(label.fontWeight).toBe("bold");
+    expect(label.backgroundColor).toBe("rgba(0,0,0,0.7)");
+    expect(label.padding).toBe(5);
   });
 
   it("stores objectType as lineLabel", () => {
