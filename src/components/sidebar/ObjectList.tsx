@@ -91,7 +91,8 @@ export function ObjectList({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="h-5 px-1.5 text-[10px]"
+                    aria-label={`Move ${obj.name} up`}
+                    className="min-w-[44px] min-h-[44px] h-5 px-1.5 text-[10px]"
                     onClick={() => onMoveUp(obj.id)}
                   >
                     &uarr;
@@ -99,7 +100,8 @@ export function ObjectList({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="h-5 px-1.5 text-[10px]"
+                    aria-label={`Move ${obj.name} down`}
+                    className="min-w-[44px] min-h-[44px] h-5 px-1.5 text-[10px]"
                     onClick={() => onMoveDown(obj.id)}
                   >
                     &darr;
@@ -117,7 +119,8 @@ export function ObjectList({
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="h-6 px-2 text-[10px]"
+                    aria-label={`Delete ${obj.name}`}
+                    className="min-w-[44px] min-h-[44px] h-6 px-2 text-[10px]"
                     onClick={() => onDelete(obj.id)}
                   >
                     &times;

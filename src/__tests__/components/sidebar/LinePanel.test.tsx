@@ -50,9 +50,7 @@ describe("LinePanel", () => {
 
   it("renders color swatches for each LINE_COLOR", () => {
     render(<LinePanel {...defaultProps} />);
-    const swatches = screen
-      .getAllByRole("button")
-      .filter((btn) => btn.style.background !== "");
+    const swatches = screen.getAllByRole("radio");
     expect(swatches.length).toBe(LINE_COLORS.length);
   });
 
@@ -134,9 +132,7 @@ describe("LinePanel", () => {
     const setSelectedLineColor = vi.fn();
     setupStoreMock({ pixelsPerMeter: 100, setSelectedLineColor });
     render(<LinePanel {...defaultProps} />);
-    const swatches = screen
-      .getAllByRole("button")
-      .filter((btn) => btn.style.background !== "");
+    const swatches = screen.getAllByRole("radio");
     fireEvent.click(swatches[2]);
     expect(setSelectedLineColor).toHaveBeenCalledWith(LINE_COLORS[2]);
   });

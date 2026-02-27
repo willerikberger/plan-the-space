@@ -150,8 +150,9 @@ describe("ObjectList", () => {
   it("calls onDelete with object id when delete button clicked", () => {
     setupStoreMock([sampleShape]);
     render(<ObjectList {...defaultProps} />);
-    // The delete button uses &times; character
-    const deleteBtn = screen.getByRole("button", { name: "\u00d7" });
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete Garden Bed",
+    });
     fireEvent.click(deleteBtn);
     expect(defaultProps.onDelete).toHaveBeenCalledWith(1);
   });
@@ -159,8 +160,9 @@ describe("ObjectList", () => {
   it("calls onMoveUp with object id when up arrow clicked", () => {
     setupStoreMock([sampleShape]);
     render(<ObjectList {...defaultProps} />);
-    // The up arrow button uses &uarr; character
-    const upBtn = screen.getByRole("button", { name: "\u2191" });
+    const upBtn = screen.getByRole("button", {
+      name: "Move Garden Bed up",
+    });
     fireEvent.click(upBtn);
     expect(defaultProps.onMoveUp).toHaveBeenCalledWith(1);
   });
@@ -168,8 +170,9 @@ describe("ObjectList", () => {
   it("calls onMoveDown with object id when down arrow clicked", () => {
     setupStoreMock([sampleShape]);
     render(<ObjectList {...defaultProps} />);
-    // The down arrow button uses &darr; character
-    const downBtn = screen.getByRole("button", { name: "\u2193" });
+    const downBtn = screen.getByRole("button", {
+      name: "Move Garden Bed down",
+    });
     fireEvent.click(downBtn);
     expect(defaultProps.onMoveDown).toHaveBeenCalledWith(1);
   });

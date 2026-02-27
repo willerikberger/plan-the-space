@@ -168,12 +168,7 @@ describe("ShapePanel", () => {
   // --------------------------------------------------
   it("renders a color swatch for each SHAPE_COLOR", () => {
     render(<ShapePanel {...defaultProps} />);
-    // ColorPicker renders a button per color
-    const swatches = screen
-      .getAllByRole("button")
-      .filter(
-        (btn) => btn.style.background !== "" && btn.textContent !== "Add Shape",
-      );
+    const swatches = screen.getAllByRole("radio");
     expect(swatches.length).toBe(SHAPE_COLORS.length);
   });
 
@@ -181,10 +176,7 @@ describe("ShapePanel", () => {
     const setSelectedColor = vi.fn();
     setupStoreMock({ pixelsPerMeter: 100, setSelectedColor });
     render(<ShapePanel {...defaultProps} />);
-    // Click the second color swatch (skip "Add Shape" button)
-    const swatches = screen
-      .getAllByRole("button")
-      .filter((btn) => btn.style.background !== "");
+    const swatches = screen.getAllByRole("radio");
     fireEvent.click(swatches[1]);
     expect(setSelectedColor).toHaveBeenCalledWith(SHAPE_COLORS[1]);
   });

@@ -70,6 +70,11 @@ export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
               ? "text-planner-text hover:bg-planner-accent cursor-pointer"
               : "text-planner-text-disabled cursor-not-allowed",
           )}
+          aria-label={
+            historyState.canUndo
+              ? `Undo (${historyState.undoCount} step${historyState.undoCount !== 1 ? "s" : ""})`
+              : "Nothing to undo"
+          }
           title={
             historyState.canUndo
               ? `Undo (${historyState.undoCount} step${historyState.undoCount !== 1 ? "s" : ""})`
@@ -87,6 +92,11 @@ export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
               ? "text-planner-text hover:bg-planner-accent cursor-pointer"
               : "text-planner-text-disabled cursor-not-allowed",
           )}
+          aria-label={
+            historyState.canRedo
+              ? `Redo (${historyState.redoCount} step${historyState.redoCount !== 1 ? "s" : ""})`
+              : "Nothing to redo"
+          }
           title={
             historyState.canRedo
               ? `Redo (${historyState.redoCount} step${historyState.redoCount !== 1 ? "s" : ""})`

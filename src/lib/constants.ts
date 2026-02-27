@@ -46,7 +46,7 @@ export const THEME = {
   danger: "#c0392b",
   textPrimary: "#eee",
   textSecondary: "#888",
-  textMuted: "#666",
+  textMuted: "#9a9a9a",
   green: "#4ade80",
 } as const;
 
