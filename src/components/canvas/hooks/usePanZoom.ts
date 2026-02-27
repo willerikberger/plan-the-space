@@ -11,11 +11,12 @@ import { useRef, useEffect } from "react";
 import { Point as FabricPoint } from "fabric";
 import type { Canvas, TPointerEventInfo } from "fabric";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/constants";
-import { usePlannerStore } from "@/lib/store";
+import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
 
 export function usePanZoom(fabricCanvasRef: React.RefObject<Canvas | null>) {
   const isPanningRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
@@ -31,18 +32,21 @@ export function usePanZoom(fabricCanvasRef: React.RefObject<Canvas | null>) {
       e.preventDefault();
       e.stopPropagation();
 
-      const pct = Math.round(zoom * 100);
-      const store = usePlannerStore.getState();
-      const count = Array.from(store.objects.values()).filter(
-        (o) =>
-          o.type === "shape" || o.type === "line" || o.type === "overlayImage",
-      ).length;
-      store.setStatusMessage(`Zoom: ${pct}% | ${count} object(s)`);
+      // Debounce status message updates during rapid scrolling
+      if (wheelDebounceRef.current) clearTimeout(wheelDebounceRef.current);
+      const capturedZoom = zoom;
+      wheelDebounceRef.current = setTimeout(() => {
+        const pct = Math.round(capturedZoom * 100);
+        const state = usePlannerStore.getState();
+        const count = selectVisibleObjects(state).length;
+        state.setStatusMessage(`Zoom: ${pct}% | ${count} object(s)`);
+      }, 100);
     };
 
     canvas.on("mouse:wheel", handleWheel as never);
     return () => {
       canvas.off("mouse:wheel", handleWheel as never);
+      if (wheelDebounceRef.current) clearTimeout(wheelDebounceRef.current);
     };
   }, [fabricCanvasRef]);
 
