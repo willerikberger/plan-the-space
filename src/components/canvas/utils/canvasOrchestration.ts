@@ -58,62 +58,61 @@ export function getFabricState(
   const refs = allFabricRefsRef.current.get(id);
   if (!refs) return null;
 
-  if ("rect" in refs && !("label" in refs)) {
-    // mask
-    const r = refs.rect;
-    return {
-      left: r.left ?? 0,
-      top: r.top ?? 0,
-      scaleX: r.scaleX ?? 1,
-      scaleY: r.scaleY ?? 1,
-      angle: r.angle ?? 0,
-      width: r.width,
-      height: r.height,
-    };
+  switch (refs.type) {
+    case "mask": {
+      const r = refs.rect;
+      return {
+        left: r.left ?? 0,
+        top: r.top ?? 0,
+        scaleX: r.scaleX ?? 1,
+        scaleY: r.scaleY ?? 1,
+        angle: r.angle ?? 0,
+        width: r.width,
+        height: r.height,
+      };
+    }
+    case "shape": {
+      const r = refs.rect;
+      return {
+        left: r.left ?? 0,
+        top: r.top ?? 0,
+        scaleX: r.scaleX ?? 1,
+        scaleY: r.scaleY ?? 1,
+        angle: r.angle ?? 0,
+        width: r.width,
+        height: r.height,
+        baseWidthPx: getFabricProp(r, "baseWidthPx"),
+        baseHeightPx: getFabricProp(r, "baseHeightPx"),
+      };
+    }
+    case "line": {
+      const l = refs.line;
+      return {
+        left: l.left ?? 0,
+        top: l.top ?? 0,
+        scaleX: l.scaleX ?? 1,
+        scaleY: l.scaleY ?? 1,
+        angle: l.angle ?? 0,
+        x1: l.x1,
+        y1: l.y1,
+        x2: l.x2,
+        y2: l.y2,
+        strokeWidth: l.strokeWidth,
+      };
+    }
+    case "image": {
+      const img = refs.image;
+      return {
+        left: img.left ?? 0,
+        top: img.top ?? 0,
+        scaleX: img.scaleX ?? 1,
+        scaleY: img.scaleY ?? 1,
+        angle: img.angle ?? 0,
+        originX: String(img.originX ?? "left"),
+        originY: String(img.originY ?? "top"),
+      };
+    }
   }
-  if ("rect" in refs && "label" in refs) {
-    // shape
-    const r = refs.rect;
-    return {
-      left: r.left ?? 0,
-      top: r.top ?? 0,
-      scaleX: r.scaleX ?? 1,
-      scaleY: r.scaleY ?? 1,
-      angle: r.angle ?? 0,
-      width: r.width,
-      height: r.height,
-      baseWidthPx: getFabricProp(r, "baseWidthPx"),
-      baseHeightPx: getFabricProp(r, "baseHeightPx"),
-    };
-  }
-  if ("line" in refs) {
-    const l = refs.line;
-    return {
-      left: l.left ?? 0,
-      top: l.top ?? 0,
-      scaleX: l.scaleX ?? 1,
-      scaleY: l.scaleY ?? 1,
-      angle: l.angle ?? 0,
-      x1: l.x1,
-      y1: l.y1,
-      x2: l.x2,
-      y2: l.y2,
-      strokeWidth: l.strokeWidth,
-    };
-  }
-  if ("image" in refs) {
-    const img = refs.image;
-    return {
-      left: img.left ?? 0,
-      top: img.top ?? 0,
-      scaleX: img.scaleX ?? 1,
-      scaleY: img.scaleY ?? 1,
-      angle: img.angle ?? 0,
-      originX: String(img.originX ?? "left"),
-      originY: String(img.originY ?? "top"),
-    };
-  }
-  return null;
 }
 
 /**
@@ -127,14 +126,20 @@ export function clearCanvas(
 ): void {
   // Remove all tracked objects from canvas
   for (const [, refs] of allFabricRefsRef.current) {
-    if ("rect" in refs) fabricCanvas.remove(refs.rect);
-    if ("label" in refs) fabricCanvas.remove(refs.label);
-    if ("dims" in refs) fabricCanvas.remove(refs.dims);
-    if ("line" in refs) {
-      fabricCanvas.remove(refs.line);
-      if ("label" in refs) fabricCanvas.remove(refs.label);
+    switch (refs.type) {
+      case "shape":
+        fabricCanvas.remove(refs.rect, refs.label, refs.dims);
+        break;
+      case "line":
+        fabricCanvas.remove(refs.line, refs.label);
+        break;
+      case "mask":
+        fabricCanvas.remove(refs.rect);
+        break;
+      case "image":
+        fabricCanvas.remove(refs.image);
+        break;
     }
-    if ("image" in refs) fabricCanvas.remove(refs.image);
   }
   allFabricRefsRef.current.clear();
   if (backgroundRef.current) {
@@ -166,7 +171,7 @@ export function reorderObjects(
   for (const obj of store.objects.values()) {
     if (obj.type === "mask") {
       const refs = allFabricRefsRef.current.get(obj.id);
-      if (refs && "rect" in refs) {
+      if (refs?.type === "mask") {
         fabricCanvas.moveObjectTo(refs.rect, idx++);
       }
     }
@@ -175,7 +180,7 @@ export function reorderObjects(
   for (const obj of store.objects.values()) {
     if (obj.type === "backgroundImage") {
       const refs = allFabricRefsRef.current.get(obj.id);
-      if (refs && "image" in refs) {
+      if (refs?.type === "image") {
         fabricCanvas.moveObjectTo(refs.image, idx++);
       }
     }
@@ -193,14 +198,20 @@ export function deleteObject(
 ): void {
   const refs = allFabricRefsRef.current.get(id);
   if (refs) {
-    if ("rect" in refs) fabricCanvas.remove(refs.rect);
-    if ("label" in refs) fabricCanvas.remove(refs.label);
-    if ("dims" in refs) fabricCanvas.remove(refs.dims);
-    if ("line" in refs) {
-      fabricCanvas.remove(refs.line);
-      if ("label" in refs) fabricCanvas.remove(refs.label);
+    switch (refs.type) {
+      case "shape":
+        fabricCanvas.remove(refs.rect, refs.label, refs.dims);
+        break;
+      case "line":
+        fabricCanvas.remove(refs.line, refs.label);
+        break;
+      case "mask":
+        fabricCanvas.remove(refs.rect);
+        break;
+      case "image":
+        fabricCanvas.remove(refs.image);
+        break;
     }
-    if ("image" in refs) fabricCanvas.remove(refs.image);
     allFabricRefsRef.current.delete(id);
   }
   usePlannerStore.getState().removeObject(id);

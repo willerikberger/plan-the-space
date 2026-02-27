@@ -50,6 +50,7 @@ function mockShapeRefs(
   overrides: Record<string, unknown> = {},
 ): ShapeFabricRefs {
   return {
+    type: "shape",
     rect: {
       left: 100,
       top: 200,
@@ -70,6 +71,7 @@ function mockShapeRefs(
 /** Minimal line fabric refs (line + label). */
 function mockLineRefs(overrides: Record<string, unknown> = {}): LineFabricRefs {
   return {
+    type: "line",
     line: {
       left: 50,
       top: 50,
@@ -90,6 +92,7 @@ function mockLineRefs(overrides: Record<string, unknown> = {}): LineFabricRefs {
 /** Minimal mask fabric refs (rect only, no label). */
 function mockMaskRefs(overrides: Record<string, unknown> = {}): MaskFabricRefs {
   return {
+    type: "mask",
     rect: {
       left: 10,
       top: 20,
@@ -108,6 +111,7 @@ function mockImageRefs(
   overrides: Record<string, unknown> = {},
 ): ImageFabricRefs {
   return {
+    type: "image",
     image: {
       left: 0,
       top: 0,
@@ -267,16 +271,14 @@ describe("clearCanvas", () => {
     const bgRef = makeBgRef(null);
 
     // Seed the store with objects so clearObjects has something to clear
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 1,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
     usePlannerStore
       .getState()
       .addObject({ id: 2, type: "line", name: "L", lengthM: 3, color: "b" });
@@ -321,9 +323,11 @@ describe("clearCanvas", () => {
 
     clearCanvas(canvas, refsRef, bgRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.rect);
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.label);
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.dims);
+    expect(canvas.remove).toHaveBeenCalledWith(
+      shapeRefs.rect,
+      shapeRefs.label,
+      shapeRefs.dims,
+    );
   });
 
   it("removes line and label for line refs", () => {
@@ -334,8 +338,7 @@ describe("clearCanvas", () => {
 
     clearCanvas(canvas, refsRef, bgRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line);
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.label);
+    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line, lineRefs.label);
   });
 
   it("removes image for image refs", () => {
@@ -359,22 +362,22 @@ describe("deleteObject", () => {
     const shapeRefs = mockShapeRefs();
     const refsRef = makeRefsRef([[1, shapeRefs]]);
 
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 1,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
 
     deleteObject(1, canvas, refsRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.rect);
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.label);
-    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.dims);
+    expect(canvas.remove).toHaveBeenCalledWith(
+      shapeRefs.rect,
+      shapeRefs.label,
+      shapeRefs.dims,
+    );
     expect(refsRef.current.has(1)).toBe(false);
     expect(usePlannerStore.getState().objects.has(1)).toBe(false);
     expect(canvas.renderAll).toHaveBeenCalled();
@@ -391,8 +394,7 @@ describe("deleteObject", () => {
 
     deleteObject(2, canvas, refsRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line);
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.label);
+    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line, lineRefs.label);
     expect(refsRef.current.has(2)).toBe(false);
     expect(usePlannerStore.getState().objects.has(2)).toBe(false);
   });
@@ -416,14 +418,12 @@ describe("deleteObject", () => {
     const imgRefs = mockImageRefs();
     const refsRef = makeRefsRef([[4, imgRefs]]);
 
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 4,
-        type: "overlayImage",
-        name: "OI",
-        imageData: "data:test",
-      });
+    usePlannerStore.getState().addObject({
+      id: 4,
+      type: "overlayImage",
+      name: "OI",
+      imageData: "data:test",
+    });
 
     deleteObject(4, canvas, refsRef);
 
@@ -452,16 +452,14 @@ describe("deleteObject", () => {
       [2, lineRefs],
     ]);
 
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 1,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
     usePlannerStore
       .getState()
       .addObject({ id: 2, type: "line", name: "L", lengthM: 3, color: "b" });
@@ -502,14 +500,12 @@ describe("reorderObjects", () => {
 
     // Add to store
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 2,
-        type: "backgroundImage",
-        name: "BG",
-        imageData: "data:bg",
-      });
+    usePlannerStore.getState().addObject({
+      id: 2,
+      type: "backgroundImage",
+      name: "BG",
+      imageData: "data:bg",
+    });
 
     reorderObjects(canvas, refsRef, bgRef);
 
@@ -532,14 +528,12 @@ describe("reorderObjects", () => {
     const bgRef = makeBgRef(bgImage);
 
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 2,
-        type: "backgroundImage",
-        name: "BG",
-        imageData: "data:bg",
-      });
+    usePlannerStore.getState().addObject({
+      id: 2,
+      type: "backgroundImage",
+      name: "BG",
+      imageData: "data:bg",
+    });
 
     reorderObjects(canvas, refsRef, bgRef);
 
@@ -573,16 +567,14 @@ describe("reorderObjects", () => {
     ]);
     const bgRef = makeBgRef(null);
 
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 1,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
     usePlannerStore
       .getState()
       .addObject({ id: 2, type: "line", name: "L", lengthM: 3, color: "b" });

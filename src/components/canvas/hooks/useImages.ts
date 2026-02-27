@@ -121,7 +121,7 @@ export function useImages(
         canvas.setActiveObject(img);
         canvas.renderAll();
 
-        fabricRefsRef.current.set(id, { image: img });
+        fabricRefsRef.current.set(id, { type: "image", image: img });
 
         store.addObject({
           id,
@@ -178,7 +178,7 @@ export function useImages(
       canvas.add(img);
       canvas.renderAll();
 
-      fabricRefsRef.current.set(id, { image: img });
+      fabricRefsRef.current.set(id, { type: "image", image: img });
 
       store.addObject({
         id,

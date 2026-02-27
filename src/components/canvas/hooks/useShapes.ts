@@ -68,7 +68,7 @@ export function useShapes(
       canvas.add(rect, label, dims);
       canvas.setActiveObject(rect);
 
-      fabricRefsRef.current.set(id, { rect, label, dims });
+      fabricRefsRef.current.set(id, { type: "shape", rect, label, dims });
 
       store.addObject({
         id,
@@ -89,7 +89,7 @@ export function useShapes(
       const id = getFabricProp(rect, "objectId");
       if (id == null) return;
       const refs = fabricRefsRef.current.get(id);
-      if (!refs || !("label" in refs)) return;
+      if (!refs || refs.type !== "shape") return;
 
       const center = rect.getCenterPoint();
       refs.label.set({ left: center.x, top: center.y - 8, angle: rect.angle });
@@ -196,7 +196,7 @@ export function useShapes(
       });
 
       canvas.add(rect, label, dims);
-      fabricRefsRef.current.set(id, { rect, label, dims });
+      fabricRefsRef.current.set(id, { type: "shape", rect, label, dims });
 
       store.addObject({
         id,

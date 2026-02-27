@@ -92,6 +92,19 @@ type AnyFabricRefs =
   | MaskFabricRefs
   | ImageFabricRefs;
 
+/** Get the primary selectable Fabric object from any refs variant */
+function primaryObject(refs: AnyFabricRefs) {
+  switch (refs.type) {
+    case "shape":
+    case "mask":
+      return refs.rect;
+    case "line":
+      return refs.line;
+    case "image":
+      return refs.image;
+  }
+}
+
 export function PlannerCanvas({
   ref,
 }: {
@@ -353,18 +366,8 @@ export function PlannerCanvas({
       if (!canvas) return;
       const refs = allFabricRefsRef.current.get(id);
       if (refs) {
-        const obj =
-          "rect" in refs
-            ? refs.rect
-            : "line" in refs
-              ? refs.line
-              : "image" in refs
-                ? refs.image
-                : null;
-        if (obj) {
-          canvas.setActiveObject(obj);
-          canvas.renderAll();
-        }
+        canvas.setActiveObject(primaryObject(refs));
+        canvas.renderAll();
       }
     },
     [fabricCanvasRef],
@@ -376,15 +379,7 @@ export function PlannerCanvas({
       if (!canvas) return;
       const refs = allFabricRefsRef.current.get(id);
       if (!refs) return;
-      const obj =
-        "rect" in refs
-          ? refs.rect
-          : "line" in refs
-            ? refs.line
-            : "image" in refs
-              ? refs.image
-              : null;
-      if (!obj) return;
+      const obj = primaryObject(refs);
       const objects = canvas.getObjects();
       const currentIdx = objects.indexOf(obj);
       if (currentIdx < objects.length - 1) {
@@ -403,15 +398,7 @@ export function PlannerCanvas({
       if (!canvas) return;
       const refs = allFabricRefsRef.current.get(id);
       if (!refs) return;
-      const obj =
-        "rect" in refs
-          ? refs.rect
-          : "line" in refs
-            ? refs.line
-            : "image" in refs
-              ? refs.image
-              : null;
-      if (!obj) return;
+      const obj = primaryObject(refs);
       const objects = canvas.getObjects();
       const currentIdx = objects.indexOf(obj);
       const store = usePlannerStore.getState();

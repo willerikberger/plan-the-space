@@ -75,21 +75,25 @@ export type PlannerObject =
 // Fabric refs (mutable, non-serializable)
 // ============================================
 export interface ShapeFabricRefs {
+  type: "shape";
   rect: Rect;
   label: FabricText;
   dims: FabricText;
 }
 
 export interface LineFabricRefs {
+  type: "line";
   line: Line;
   label: FabricText;
 }
 
 export interface MaskFabricRefs {
+  type: "mask";
   rect: Rect;
 }
 
 export interface ImageFabricRefs {
+  type: "image";
   image: FabricImage;
 }
 
@@ -231,6 +235,25 @@ export interface SerializedProjectV3 extends SerializedProjectBase {
 
 // Union keeps backward compat — v2 has no metadata field
 export type SerializedProject = SerializedProjectBase;
+
+// ============================================
+// Mode transitions
+// ============================================
+
+/** Valid transitions between planner modes */
+const MODE_TRANSITIONS: Record<PlannerMode, readonly PlannerMode[]> = {
+  normal: ["calibrating", "drawing-line", "drawing-mask", "cleanup"],
+  calibrating: ["normal"],
+  "drawing-line": ["normal"],
+  "drawing-mask": ["cleanup"],
+  cleanup: ["normal", "drawing-mask"],
+} as const;
+
+/** Check whether a mode transition is valid */
+export function canTransitionMode(from: PlannerMode, to: PlannerMode): boolean {
+  if (from === to) return true;
+  return MODE_TRANSITIONS[from].includes(to);
+}
 
 // ============================================
 // Calibration transient state

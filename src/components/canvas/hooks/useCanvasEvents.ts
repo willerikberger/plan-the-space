@@ -13,40 +13,51 @@ import { usePlannerStore } from "@/lib/store";
 import { getFabricProp } from "@/components/canvas/utils/fabricHelpers";
 import type { Point } from "@/lib/types";
 
-interface CanvasEventHandlers {
-  // Calibration
+export interface CalibrationHandlers {
   handleCalibrationClick: (pointer: Point) => void;
   updateCalibrationLine: (pointer: Point) => void;
   finishCalibrationLine: () => void;
   startPointRef: React.RefObject<Point | null>;
+}
 
-  // Lines
+export interface LineHandlers {
   handleLineDrawStart: (pointer: Point) => void;
   updateDrawingLine: (pointer: Point) => void;
   finishDrawingLine: () => void;
   lineStartRef: React.RefObject<Point | null>;
   updateLineLabel: (line: Line) => void;
+}
 
-  // Masks
+export interface MaskHandlers {
   handleMaskDrawStart: (pointer: Point) => void;
   updateMaskRect: (pointer: Point) => void;
   finishMaskRect: () => void;
+}
 
-  // Shapes
+export interface ShapeHandlers {
   updateShapeLabels: (rect: Rect) => void;
   updateShapeDimensions: (rect: Rect, finalize: boolean) => void;
+}
 
-  // Pan
+export interface PanHandlers {
   startPan: (clientX: number, clientY: number) => void;
   movePan: (clientX: number, clientY: number) => void;
   endPan: () => void;
   isPanningRef: React.RefObject<boolean>;
+}
 
-  // Objects
+export interface ObjectHandlers {
   deleteSelected: () => void;
   reorderObjects: () => void;
   triggerAutoSave: () => void;
 }
+
+type CanvasEventHandlers = CalibrationHandlers &
+  LineHandlers &
+  MaskHandlers &
+  ShapeHandlers &
+  PanHandlers &
+  ObjectHandlers;
 
 export function useCanvasEvents(
   fabricCanvasRef: React.RefObject<Canvas | null>,

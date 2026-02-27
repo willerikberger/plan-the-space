@@ -189,7 +189,7 @@ export function useLines(
       parentId: id,
     });
 
-    fabricRefsRef.current.set(id, { line, label });
+    fabricRefsRef.current.set(id, { type: "line", line, label });
 
     store.addObject({
       id,
@@ -213,7 +213,7 @@ export function useLines(
       const id = getFabricProp(line, "objectId");
       if (id == null) return;
       const refs = fabricRefsRef.current.get(id);
-      if (!refs || !("label" in refs)) return;
+      if (!refs || refs.type !== "line") return;
 
       const x1 = (line.x1 ?? 0) + (line.left ?? 0);
       const y1 = (line.y1 ?? 0) + (line.top ?? 0);
@@ -273,7 +273,7 @@ export function useLines(
       });
 
       canvas.add(line, label);
-      fabricRefsRef.current.set(id, { line, label });
+      fabricRefsRef.current.set(id, { type: "line", line, label });
 
       store.addObject({
         id,

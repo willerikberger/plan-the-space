@@ -10,6 +10,7 @@ import type {
   UISlice,
   HistorySlice,
 } from "./types";
+import { canTransitionMode } from "./types";
 import { SHAPE_COLORS, LINE_COLORS, DEFAULTS } from "./constants";
 
 // ============================================
@@ -53,7 +54,14 @@ const initialUIState = {
 // ============================================
 const createCanvasSlice: StoreSliceCreator<CanvasSlice> = (set) => ({
   ...initialCanvasState,
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) =>
+    set((state) => {
+      if (!canTransitionMode(state.mode, mode)) {
+        console.warn(`Invalid mode transition: ${state.mode} → ${mode}`);
+        return state;
+      }
+      return { mode };
+    }),
   setPixelsPerMeter: (ppm) => set({ pixelsPerMeter: ppm }),
   setBackgroundImageData: (data) => set({ backgroundImageData: data }),
   setCalibrationPixelLength: (len) => set({ calibrationPixelLength: len }),

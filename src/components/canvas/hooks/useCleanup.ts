@@ -158,7 +158,7 @@ export function useCleanup(
     const id = store.nextObjectId();
     setFabricProps(mask, { objectId: id, objectType: "mask" });
 
-    fabricRefsRef.current.set(id, { rect: mask });
+    fabricRefsRef.current.set(id, { type: "mask", rect: mask });
 
     store.addObject({ id, type: "mask", name: `Mask ${id + 1}` });
 
@@ -209,7 +209,7 @@ export function useCleanup(
         canvas.setActiveObject(img);
         canvas.renderAll();
 
-        fabricRefsRef.current.set(id, { image: img });
+        fabricRefsRef.current.set(id, { type: "image", image: img });
 
         store.addObject({
           id,
@@ -253,7 +253,7 @@ export function useCleanup(
       });
 
       canvas.add(rect);
-      fabricRefsRef.current.set(id, { rect });
+      fabricRefsRef.current.set(id, { type: "mask", rect });
 
       store.addObject({ id, type: "mask", name: data.name });
     },
