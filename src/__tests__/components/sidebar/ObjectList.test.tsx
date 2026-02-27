@@ -9,11 +9,6 @@ vi.mock("@/lib/store", () => ({
   selectVisibleObjects: vi.fn(),
 }));
 
-// Also mock zustand/react/shallow used by ObjectList
-vi.mock("zustand/react/shallow", () => ({
-  useShallow: (fn: unknown) => fn,
-}));
-
 const mockUsePlannerStore = usePlannerStore as unknown as ReturnType<
   typeof vi.fn
 >;
@@ -24,9 +19,7 @@ const mockSelectVisibleObjects = selectVisibleObjects as unknown as ReturnType<
 function setupStoreMock(
   objects: (ShapeObject | LineObject | OverlayImageObject)[] = [],
 ) {
-  // usePlannerStore is called with useShallow(selectVisibleObjects), which
-  // after our mock becomes selectVisibleObjects itself.
-  // So the store mock receives selectVisibleObjects as the selector.
+  // usePlannerStore is called with selectVisibleObjects as the selector.
   mockSelectVisibleObjects.mockReturnValue(objects);
   mockUsePlannerStore.mockImplementation((selector?: unknown) => {
     if (typeof selector === "function") {

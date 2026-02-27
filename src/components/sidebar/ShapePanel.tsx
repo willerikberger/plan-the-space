@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore } from "@/lib/store";
 import { SHAPE_COLORS, DEFAULTS } from "@/lib/constants";
 
@@ -17,13 +16,9 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
   const [name, setName] = useState("");
   const [width, setWidth] = useState(String(DEFAULTS.shapeWidthM));
   const [height, setHeight] = useState(String(DEFAULTS.shapeHeightM));
-  const { selectedColor, setSelectedColor, isCalibrated } = usePlannerStore(
-    useShallow((s) => ({
-      selectedColor: s.selectedColor,
-      setSelectedColor: s.setSelectedColor,
-      isCalibrated: s.pixelsPerMeter !== null,
-    })),
-  );
+  const selectedColor = usePlannerStore((s) => s.selectedColor);
+  const setSelectedColor = usePlannerStore((s) => s.setSelectedColor);
+  const isCalibrated = usePlannerStore((s) => s.pixelsPerMeter !== null);
 
   const handleAdd = () => {
     const w = parseFloat(width) || DEFAULTS.shapeWidthM;

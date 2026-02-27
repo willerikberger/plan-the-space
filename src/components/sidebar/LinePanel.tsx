@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore } from "@/lib/store";
 import { LINE_COLORS } from "@/lib/constants";
 
@@ -17,23 +16,12 @@ export function LinePanel({
   onStartDrawLine,
   onCancelDrawLine,
 }: LinePanelProps) {
-  const {
-    selectedLineColor,
-    setSelectedLineColor,
-    lineWidth,
-    setLineWidth,
-    mode,
-    isCalibrated,
-  } = usePlannerStore(
-    useShallow((s) => ({
-      selectedLineColor: s.selectedLineColor,
-      setSelectedLineColor: s.setSelectedLineColor,
-      lineWidth: s.lineWidth,
-      setLineWidth: s.setLineWidth,
-      mode: s.mode,
-      isCalibrated: s.pixelsPerMeter !== null,
-    })),
-  );
+  const selectedLineColor = usePlannerStore((s) => s.selectedLineColor);
+  const setSelectedLineColor = usePlannerStore((s) => s.setSelectedLineColor);
+  const lineWidth = usePlannerStore((s) => s.lineWidth);
+  const setLineWidth = usePlannerStore((s) => s.setLineWidth);
+  const mode = usePlannerStore((s) => s.mode);
+  const isCalibrated = usePlannerStore((s) => s.pixelsPerMeter !== null);
 
   return (
     <div className="space-y-3">

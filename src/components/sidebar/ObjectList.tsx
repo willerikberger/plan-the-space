@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
 import type { PlannerObject } from "@/lib/types";
 
@@ -48,7 +47,7 @@ export function ObjectList({
   onMoveUp,
   onMoveDown,
 }: ObjectListProps) {
-  const visibleObjects = usePlannerStore(useShallow(selectVisibleObjects));
+  const visibleObjects = usePlannerStore(selectVisibleObjects);
 
   return (
     <div className="mb-6">

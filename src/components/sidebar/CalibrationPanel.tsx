@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore } from "@/lib/store";
 
 interface CalibrationPanelProps {
@@ -19,13 +18,11 @@ export function CalibrationPanel({
   onApplyCalibration,
 }: CalibrationPanelProps) {
   const [lengthValue, setLengthValue] = useState("");
-  const { mode, hasBackgroundImage, showInput } = usePlannerStore(
-    useShallow((s) => ({
-      mode: s.mode,
-      hasBackgroundImage: s.backgroundImageData !== null,
-      showInput: s.showCalibrationInput,
-    })),
+  const mode = usePlannerStore((s) => s.mode);
+  const hasBackgroundImage = usePlannerStore(
+    (s) => s.backgroundImageData !== null,
   );
+  const showInput = usePlannerStore((s) => s.showCalibrationInput);
 
   const handleApply = () => {
     const val = parseFloat(lengthValue);

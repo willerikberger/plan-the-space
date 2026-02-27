@@ -164,8 +164,13 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   },
 }));
 
-// Selectors
+// Memoized selectors — return stable references when the underlying data hasn't changed
+let _cachedObjectsRef: Map<number, PlannerObject> | null = null;
+let _cachedVisible: PlannerObject[] = [];
+
 export const selectVisibleObjects = (state: PlannerStore): PlannerObject[] => {
+  if (state.objects === _cachedObjectsRef) return _cachedVisible;
+  _cachedObjectsRef = state.objects;
   const result: PlannerObject[] = [];
   for (const obj of state.objects.values()) {
     if (
@@ -176,6 +181,7 @@ export const selectVisibleObjects = (state: PlannerStore): PlannerObject[] => {
       result.push(obj);
     }
   }
+  _cachedVisible = result;
   return result;
 };
 

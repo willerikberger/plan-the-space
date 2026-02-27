@@ -1,7 +1,6 @@
 "use client";
 
 import { Undo2, Redo2 } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -11,13 +10,9 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
-  const { mode, pixelsPerMeter, historyState } = usePlannerStore(
-    useShallow((s) => ({
-      mode: s.mode,
-      pixelsPerMeter: s.pixelsPerMeter,
-      historyState: s.historyState,
-    })),
-  );
+  const mode = usePlannerStore((s) => s.mode);
+  const pixelsPerMeter = usePlannerStore((s) => s.pixelsPerMeter);
+  const historyState = usePlannerStore((s) => s.historyState);
 
   const modeLabel = (() => {
     switch (mode) {
