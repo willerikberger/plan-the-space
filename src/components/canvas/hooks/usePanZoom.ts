@@ -13,7 +13,16 @@ import type { Canvas, TPointerEventInfo } from "fabric";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/constants";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
 
-export function usePanZoom(fabricCanvasRef: React.RefObject<Canvas | null>) {
+export interface UsePanZoomReturn {
+  isPanningRef: React.RefObject<boolean>;
+  startPan: (clientX: number, clientY: number) => void;
+  movePan: (clientX: number, clientY: number) => void;
+  endPan: () => void;
+}
+
+export function usePanZoom(
+  fabricCanvasRef: React.RefObject<Canvas | null>,
+): UsePanZoomReturn {
   const isPanningRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

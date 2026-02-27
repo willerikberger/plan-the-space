@@ -10,6 +10,7 @@
 import { useCallback } from "react";
 import type { Canvas, Rect } from "fabric";
 import { usePlannerStore } from "@/lib/store";
+
 import {
   createShapeRect,
   createShapeLabel,
@@ -19,10 +20,31 @@ import {
 import { roundToDecimal } from "@/components/canvas/utils/geometry";
 import type { ShapeFabricRefs } from "@/lib/types";
 
+export interface UseShapesReturn {
+  addShape: (name: string, widthM: number, heightM: number) => void;
+  updateShapeLabels: (rect: Rect) => void;
+  updateShapeDimensions: (rect: Rect, finalize: boolean) => void;
+  loadShape: (data: {
+    left: number;
+    top: number;
+    width?: number;
+    height?: number;
+    widthM: number;
+    heightM: number;
+    color: string;
+    scaleX?: number;
+    scaleY?: number;
+    angle?: number;
+    baseWidthPx?: number;
+    baseHeightPx?: number;
+    name: string;
+  }) => void;
+}
+
 export function useShapes(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, ShapeFabricRefs>>,
-) {
+): UseShapesReturn {
   const addShape = useCallback(
     (name: string, widthM: number, heightM: number) => {
       const canvas = fabricCanvasRef.current;

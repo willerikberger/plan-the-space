@@ -11,7 +11,14 @@ import { useRef, useEffect, useCallback } from "react";
 import { Canvas } from "fabric";
 import { CANVAS_BG } from "@/lib/constants";
 
-export function useFabricCanvas() {
+export interface UseFabricCanvasReturn {
+  canvasElRef: React.RefObject<HTMLCanvasElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  fabricCanvasRef: React.RefObject<Canvas | null>;
+  initCanvas: () => Canvas | null;
+}
+
+export function useFabricCanvas(): UseFabricCanvasReturn {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);

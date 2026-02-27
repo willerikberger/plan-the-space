@@ -18,10 +18,32 @@ import {
 } from "@/components/canvas/utils/geometry";
 import type { ImageFabricRefs } from "@/lib/types";
 
+export interface UseImagesReturn {
+  backgroundRef: React.MutableRefObject<FabricImage | null>;
+  loadBackgroundImage: (file: File) => void;
+  loadBackgroundFromData: (
+    data: string,
+    callback?: () => void,
+  ) => Promise<void>;
+  addOverlayImage: (file: File) => void;
+  loadImageObject: (data: {
+    type: "backgroundImage" | "overlayImage";
+    left: number;
+    top: number;
+    scaleX?: number;
+    scaleY?: number;
+    angle?: number;
+    imageData: string;
+    name: string;
+    originX?: string;
+    originY?: string;
+  }) => Promise<void>;
+}
+
 export function useImages(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, ImageFabricRefs>>,
-) {
+): UseImagesReturn {
   const backgroundRef = useRef<FabricImage | null>(null);
 
   const loadBackgroundImage = useCallback(

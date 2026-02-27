@@ -20,10 +20,30 @@ import { overlayImageScale } from "@/components/canvas/utils/geometry";
 import { MIN_MASK_SIZE_PX } from "@/lib/constants";
 import type { Point, MaskFabricRefs, ImageFabricRefs } from "@/lib/types";
 
+export interface UseCleanupReturn {
+  enterCleanupMode: () => void;
+  exitCleanupMode: () => void;
+  startDrawingMask: () => void;
+  handleMaskDrawStart: (pointer: Point) => void;
+  updateMaskRect: (pointer: Point) => void;
+  finishMaskRect: () => void;
+  addCleanupImage: (file: File) => void;
+  loadMask: (data: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    scaleX?: number;
+    scaleY?: number;
+    angle?: number;
+    name: string;
+  }) => void;
+}
+
 export function useCleanup(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, MaskFabricRefs | ImageFabricRefs>>,
-) {
+): UseCleanupReturn {
   const maskStartRef = useRef<Point | null>(null);
   const currentMaskRef = useRef<Rect | null>(null);
 

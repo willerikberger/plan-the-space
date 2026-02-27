@@ -26,10 +26,35 @@ import {
 import { MIN_LINE_LENGTH_PX } from "@/lib/constants";
 import type { Point, LineFabricRefs } from "@/lib/types";
 
+export interface UseLinesReturn {
+  lineStartRef: React.RefObject<Point | null>;
+  startLineDrawing: () => void;
+  cancelLineDrawing: () => void;
+  handleLineDrawStart: (pointer: Point) => void;
+  updateDrawingLine: (pointer: Point) => void;
+  finishDrawingLine: () => void;
+  updateLineLabel: (line: Line) => void;
+  loadLine: (data: {
+    left: number;
+    top: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    lengthM: number;
+    color: string;
+    strokeWidth: number;
+    scaleX?: number;
+    scaleY?: number;
+    angle?: number;
+    name: string;
+  }) => void;
+}
+
 export function useLines(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, LineFabricRefs>>,
-) {
+): UseLinesReturn {
   const lineStartRef = useRef<Point | null>(null);
   const currentLineRef = useRef<Line | null>(null);
   const currentLabelRef = useRef<FabricText | null>(null);

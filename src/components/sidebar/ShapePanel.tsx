@@ -19,11 +19,12 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
   const selectedColor = usePlannerStore((s) => s.selectedColor);
   const setSelectedColor = usePlannerStore((s) => s.setSelectedColor);
   const isCalibrated = usePlannerStore((s) => s.pixelsPerMeter !== null);
+  const objectIdCounter = usePlannerStore((s) => s.objectIdCounter);
 
   const handleAdd = () => {
     const w = parseFloat(width) || DEFAULTS.shapeWidthM;
     const h = parseFloat(height) || DEFAULTS.shapeHeightM;
-    const n = name || `Shape ${usePlannerStore.getState().objectIdCounter + 1}`;
+    const n = name || `Shape ${objectIdCounter + 1}`;
     onAddShape(n, w, h);
     setName("");
   };

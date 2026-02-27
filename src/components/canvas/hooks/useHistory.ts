@@ -24,10 +24,19 @@ interface UseHistoryOptions {
   restoreFromSnapshot: (snapshot: HistorySnapshot) => Promise<void>;
 }
 
+export interface UseHistoryReturn {
+  captureSnapshot: () => Promise<void>;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+  resetHistory: () => Promise<void>;
+  isRestoringRef: React.RefObject<boolean>;
+  managerRef: React.RefObject<HistoryManager>;
+}
+
 export function useHistory({
   getFabricState,
   restoreFromSnapshot,
-}: UseHistoryOptions) {
+}: UseHistoryOptions): UseHistoryReturn {
   const managerRef = useRef(new HistoryManager());
   const isRestoringRef = useRef(false);
 

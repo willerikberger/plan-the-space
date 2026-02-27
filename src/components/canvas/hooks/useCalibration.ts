@@ -19,9 +19,19 @@ import { distance } from "@/components/canvas/utils/geometry";
 import { MIN_LINE_LENGTH_PX } from "@/lib/constants";
 import type { Point } from "@/lib/types";
 
+export interface UseCalibrationReturn {
+  startPointRef: React.RefObject<Point | null>;
+  startCalibration: () => void;
+  cancelCalibration: () => void;
+  handleCalibrationClick: (pointer: Point) => void;
+  updateCalibrationLine: (pointer: Point) => void;
+  finishCalibrationLine: () => void;
+  applyCalibration: (meters: number) => void;
+}
+
 export function useCalibration(
   fabricCanvasRef: React.RefObject<Canvas | null>,
-) {
+): UseCalibrationReturn {
   const startPointRef = useRef<Point | null>(null);
   const lineRef = useRef<Line | null>(null);
   const startCircleRef = useRef<Circle | null>(null);
