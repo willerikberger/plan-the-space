@@ -125,3 +125,9 @@
 .animate-mode-pulse {
   animation: mode-pulse 1.5s infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mode-pulse {
+    animation: none;
+  }
+}

@@ -58,9 +58,10 @@ export function Sidebar(props: SidebarProps) {
       </p>
 
       {/* Mode Toggle */}
-      <div className="mb-4">
+      <div className="mb-4" role="group" aria-label="Canvas mode">
         <div className="flex bg-planner-accent rounded-md overflow-hidden">
           <button
+            aria-pressed={!isCleanup}
             className={`flex-1 py-2.5 text-sm transition-colors ${
               !isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
             }`}
@@ -69,6 +70,7 @@ export function Sidebar(props: SidebarProps) {
             Normal Mode
           </button>
           <button
+            aria-pressed={isCleanup}
             className={`flex-1 py-2.5 text-sm transition-colors ${
               isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
             }`}

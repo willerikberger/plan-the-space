@@ -710,7 +710,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle>(
 
     return (
       <div ref={containerRef} className="flex-1 relative overflow-hidden">
-        <canvas ref={canvasElRef} />
+        <canvas ref={canvasElRef} aria-label="Floor plan design canvas" />
       </div>
     );
   },

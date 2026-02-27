@@ -42,6 +42,7 @@ export class ErrorBoundary extends React.Component<
         <div
           className="flex h-screen items-center justify-center bg-planner-sidebar"
           role="alert"
+          aria-live="assertive"
         >
           <div className="max-w-md rounded-lg bg-planner-accent p-8 text-center">
             <h1 className="mb-4 text-xl font-semibold text-planner-text">

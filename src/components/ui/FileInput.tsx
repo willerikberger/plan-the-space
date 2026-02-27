@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import { useRef } from 'react'
-import { Button } from '@/components/ui/button'
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 interface FileInputProps {
-  accept?: string
-  onChange: (file: File) => void
-  label?: string
-  variant?: 'default' | 'secondary' | 'outline'
+  accept?: string;
+  onChange: (file: File) => void;
+  label?: string;
+  variant?: "default" | "secondary" | "outline";
 }
 
 export function FileInput({
   accept,
   onChange,
-  label = 'Choose File',
-  variant = 'secondary',
+  label = "Choose File",
+  variant = "secondary",
 }: FileInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="relative w-full">
@@ -32,15 +32,15 @@ export function FileInput({
         ref={inputRef}
         type="file"
         accept={accept}
-        className="hidden"
+        className="sr-only"
         onChange={(e) => {
-          const file = e.target.files?.[0]
+          const file = e.target.files?.[0];
           if (file) {
-            onChange(file)
-            e.target.value = ''
+            onChange(file);
+            e.target.value = "";
           }
         }}
       />
     </div>
-  )
+  );
 }
