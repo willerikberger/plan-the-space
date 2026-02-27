@@ -72,7 +72,7 @@ export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
           }
           title={
             historyState.canUndo
-              ? `Undo (${historyState.undoCount} step${historyState.undoCount !== 1 ? "s" : ""})`
+              ? `Undo · ⌘Z (${historyState.undoCount} step${historyState.undoCount !== 1 ? "s" : ""})`
               : "Nothing to undo"
           }
         >
@@ -94,7 +94,7 @@ export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
           }
           title={
             historyState.canRedo
-              ? `Redo (${historyState.redoCount} step${historyState.redoCount !== 1 ? "s" : ""})`
+              ? `Redo · ⌘⇧Z (${historyState.redoCount} step${historyState.redoCount !== 1 ? "s" : ""})`
               : "Nothing to redo"
           }
         >

@@ -116,13 +116,23 @@ const createObjectsSlice: StoreSliceCreator<ObjectsSlice> = (set, get) => ({
 // ============================================
 // UI slice — colors, line width, status
 // ============================================
+let statusTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
 const createUISlice: StoreSliceCreator<UISlice> = (set) => ({
   ...initialUIState,
   setSelectedColor: (color) => set({ selectedColor: color }),
   setSelectedLineColor: (color) => set({ selectedLineColor: color }),
   setLineWidth: (w) => set({ lineWidth: w }),
   setAutoSaveEnabled: (enabled) => set({ autoSaveEnabled: enabled }),
-  setStatusMessage: (msg) => set({ statusMessage: msg }),
+  setStatusMessage: (msg) => {
+    set({ statusMessage: msg });
+    clearTimeout(statusTimeoutId);
+    if (msg) {
+      statusTimeoutId = setTimeout(() => {
+        set({ statusMessage: "" });
+      }, 5000);
+    }
+  },
 });
 
 // ============================================

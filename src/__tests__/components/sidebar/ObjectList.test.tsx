@@ -59,7 +59,11 @@ describe("ObjectList", () => {
 
   it("shows empty message when no objects", () => {
     render(<ObjectList {...defaultProps} />);
-    expect(screen.getByText("No objects added yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No objects yet. Set the scale, then add shapes or lines above.",
+      ),
+    ).toBeInTheDocument();
   });
 
   // --------------------------------------------------
@@ -105,7 +109,11 @@ describe("ObjectList", () => {
   it("does not show empty message when objects exist", () => {
     setupStoreMock([sampleShape]);
     render(<ObjectList {...defaultProps} />);
-    expect(screen.queryByText("No objects added yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "No objects yet. Set the scale, then add shapes or lines above.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   // --------------------------------------------------

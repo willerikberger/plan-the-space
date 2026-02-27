@@ -49,7 +49,8 @@ export class ErrorBoundary extends React.Component<
               Something went wrong
             </h1>
             <p className="mb-2 text-sm text-planner-text-secondary">
-              An unexpected error occurred while rendering the canvas.
+              An unexpected error occurred while rendering the canvas. Your work
+              is auto-saved, so reloading should restore your last state.
             </p>
             {this.state.error && (
               <pre className="mb-6 max-h-32 overflow-auto rounded bg-planner-sidebar p-3 text-left text-xs text-planner-text-secondary">

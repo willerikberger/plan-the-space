@@ -65,10 +65,14 @@ export function CalibrationPanel({
       </div>
       {showInput && (
         <div className="mt-3 space-y-2">
-          <Label className="text-planner-text-secondary">
+          <Label
+            className="text-planner-text-secondary"
+            htmlFor="calibration-length"
+          >
             Line length in real life (meters)
           </Label>
           <Input
+            id="calibration-length"
             type="number"
             step="0.1"
             min="0.1"
@@ -80,10 +84,21 @@ export function CalibrationPanel({
             }}
             onKeyDown={(e) => e.key === "Enter" && handleApply()}
             aria-invalid={!!error}
+            aria-describedby={error ? "calibration-error" : "calibration-hint"}
             autoFocus
           />
+          <p
+            id="calibration-hint"
+            className="text-[10px] text-planner-text-dim"
+          >
+            Enter a positive number (minimum 0.1)
+          </p>
           {error && (
-            <p className="text-xs text-planner-danger-alt" role="alert">
+            <p
+              id="calibration-error"
+              className="text-xs text-planner-danger-alt"
+              role="alert"
+            >
               {error}
             </p>
           )}

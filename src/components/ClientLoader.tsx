@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import dynamic from "next/dynamic";
 
 function LoadingSkeleton() {
@@ -45,9 +44,5 @@ const PlannerApp = dynamic(() => import("@/components/PlannerApp"), {
 });
 
 export function ClientLoader() {
-  return (
-    <Suspense fallback={<LoadingSkeleton />}>
-      <PlannerApp />
-    </Suspense>
-  );
+  return <PlannerApp />;
 }

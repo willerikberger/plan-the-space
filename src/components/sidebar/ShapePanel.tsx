@@ -53,6 +53,7 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
             min="0.1"
             value={width}
             onChange={(e) => setWidth(e.target.value)}
+            aria-describedby="shape-dim-hint"
           />
         </div>
         <div className="flex-1">
@@ -65,7 +66,11 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
             min="0.1"
             value={height}
             onChange={(e) => setHeight(e.target.value)}
+            aria-describedby="shape-dim-hint"
           />
+          <p id="shape-dim-hint" className="sr-only">
+            Minimum 0.1 meters
+          </p>
         </div>
       </div>
       <div>

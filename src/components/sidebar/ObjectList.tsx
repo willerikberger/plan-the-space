@@ -59,7 +59,9 @@ export const ObjectList = memo(function ObjectList({
         </span>
       </h2>
       {visibleObjects.length === 0 ? (
-        <p className="text-planner-text-dim text-sm">No objects added yet</p>
+        <p className="text-planner-text-dim text-sm">
+          No objects yet. Set the scale, then add shapes or lines above.
+        </p>
       ) : (
         <div className="space-y-2">
           {visibleObjects.map((obj) => {
