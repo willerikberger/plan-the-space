@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 
 interface ColorPickerProps {
@@ -23,7 +24,11 @@ function colorName(rgba: string): string {
   return "Color";
 }
 
-export function ColorPicker({ colors, selected, onSelect }: ColorPickerProps) {
+export const ColorPicker = memo(function ColorPicker({
+  colors,
+  selected,
+  onSelect,
+}: ColorPickerProps) {
   return (
     <div className="flex gap-2 flex-wrap" role="radiogroup">
       {colors.map((color) => {
@@ -48,4 +53,4 @@ export function ColorPicker({ colors, selected, onSelect }: ColorPickerProps) {
       })}
     </div>
   );
-}
+});

@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { usePlannerStore } from "@/lib/store";
 
-export function StatusBar() {
+export const StatusBar = memo(function StatusBar() {
   const message = usePlannerStore((s) => s.statusMessage);
 
   return (
@@ -15,4 +16,4 @@ export function StatusBar() {
       {message}
     </div>
   );
-}
+});

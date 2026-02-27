@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
 import type { PlannerObject } from "@/lib/types";
@@ -40,7 +41,7 @@ function objectColor(obj: PlannerObject): string | null {
   return null;
 }
 
-export function ObjectList({
+export const ObjectList = memo(function ObjectList({
   selectedObjectId,
   onSelect,
   onDelete,
@@ -132,4 +133,4 @@ export function ObjectList({
       )}
     </div>
   );
-}
+});
