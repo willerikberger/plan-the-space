@@ -18,6 +18,7 @@ export function CalibrationPanel({
   onApplyCalibration,
 }: CalibrationPanelProps) {
   const [lengthValue, setLengthValue] = useState("");
+  const [error, setError] = useState("");
   const mode = usePlannerStore((s) => s.mode);
   const hasBackgroundImage = usePlannerStore(
     (s) => s.backgroundImageData !== null,
@@ -26,10 +27,17 @@ export function CalibrationPanel({
 
   const handleApply = () => {
     const val = parseFloat(lengthValue);
-    if (val > 0) {
-      onApplyCalibration(val);
-      setLengthValue("");
+    if (!lengthValue.trim()) {
+      setError("Please enter a length value");
+      return;
     }
+    if (isNaN(val) || val <= 0) {
+      setError("Length must be a positive number");
+      return;
+    }
+    setError("");
+    onApplyCalibration(val);
+    setLengthValue("");
   };
 
   return (
@@ -66,10 +74,19 @@ export function CalibrationPanel({
             min="0.1"
             placeholder="e.g. 5.0"
             value={lengthValue}
-            onChange={(e) => setLengthValue(e.target.value)}
+            onChange={(e) => {
+              setLengthValue(e.target.value);
+              if (error) setError("");
+            }}
             onKeyDown={(e) => e.key === "Enter" && handleApply()}
+            aria-invalid={!!error}
             autoFocus
           />
+          {error && (
+            <p className="text-xs text-planner-danger-alt" role="alert">
+              {error}
+            </p>
+          )}
           <Button onClick={handleApply}>Apply Scale</Button>
         </div>
       )}

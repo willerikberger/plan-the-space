@@ -12,11 +12,25 @@ import {
 } from "./sidebar/SidebarContext";
 import { Toolbar } from "./ui/Toolbar";
 import { StatusBar } from "./ui/StatusBar";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 export default function PlannerApp() {
   const canvasRef = useRef<PlannerCanvasHandle>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    confirmLabel: "",
+    onConfirm: () => {},
+  });
 
   const handleSelectObject = useCallback((id: number) => {
     canvasRef.current?.selectObject(id);
@@ -34,20 +48,29 @@ export default function PlannerApp() {
   }, []);
 
   const handleClearAll = useCallback(() => {
-    if (
-      window.confirm(
-        "Clear all shapes, lines and images? (Background and masks will be kept)",
-      )
-    ) {
-      canvasRef.current?.clearAll();
-      setSelectedObjectId(null);
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Clear All Objects",
+      description:
+        "Clear all shapes, lines and images? Background and masks will be kept.",
+      confirmLabel: "Clear All",
+      onConfirm: () => {
+        canvasRef.current?.clearAll();
+        setSelectedObjectId(null);
+      },
+    });
   }, []);
 
   const handleClearStorage = useCallback(() => {
-    if (window.confirm("Clear saved project from browser storage?")) {
-      canvasRef.current?.clearStorage();
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Clear Storage",
+      description: "Clear saved project from browser storage?",
+      confirmLabel: "Clear Storage",
+      onConfirm: () => {
+        canvasRef.current?.clearStorage();
+      },
+    });
   }, []);
 
   const sidebarCallbacks = useMemo<SidebarCallbacks>(
@@ -103,6 +126,14 @@ export default function PlannerApp() {
           <StatusBar />
         </main>
       </div>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </ErrorBoundary>
   );
 }
