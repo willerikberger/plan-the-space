@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/FileInput";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlannerStore } from "@/lib/store";
+import { useSidebarContext } from "./SidebarContext";
 import { CalibrationPanel } from "./CalibrationPanel";
 import { ShapePanel } from "./ShapePanel";
 import { LinePanel } from "./LinePanel";
@@ -12,39 +13,8 @@ import { CleanupPanel } from "./CleanupPanel";
 import { ObjectList } from "./ObjectList";
 import { StoragePanel } from "./StoragePanel";
 
-interface SidebarProps {
-  // Canvas hooks
-  onLoadImage: (file: File) => void;
-  onStartCalibration: () => void;
-  onCancelCalibration: () => void;
-  onApplyCalibration: (meters: number) => void;
-  onAddShape: (name: string, widthM: number, heightM: number) => void;
-  onStartDrawLine: () => void;
-  onCancelDrawLine: () => void;
-  onAddOverlayImage: (file: File) => void;
-  // Cleanup
-  onEnterCleanupMode: () => void;
-  onExitCleanupMode: () => void;
-  onDrawMask: () => void;
-  onAddCleanupImage: (file: File) => void;
-  // Objects
-  selectedObjectId: number | null;
-  onSelectObject: (id: number) => void;
-  onDeleteObject: (id: number) => void;
-  onDeleteSelected: () => void;
-  onClearAll: () => void;
-  onMoveObjectUp: (id: number) => void;
-  onMoveObjectDown: (id: number) => void;
-  // Storage
-  onSave: () => void;
-  onLoad: () => void;
-  onClear: () => void;
-  onExport: () => void;
-  onImport: (file: File) => void;
-  onToggleAutoSave: () => void;
-}
-
-export function Sidebar(props: SidebarProps) {
+export function Sidebar() {
+  const ctx = useSidebarContext();
   const mode = usePlannerStore((s) => s.mode);
   const isCleanup = mode === "cleanup" || mode === "drawing-mask";
 
@@ -65,7 +35,7 @@ export function Sidebar(props: SidebarProps) {
             className={`flex-1 py-2.5 text-sm transition-colors ${
               !isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
             }`}
-            onClick={() => isCleanup && props.onExitCleanupMode()}
+            onClick={() => isCleanup && ctx.onExitCleanupMode()}
           >
             Normal Mode
           </button>
@@ -74,7 +44,7 @@ export function Sidebar(props: SidebarProps) {
             className={`flex-1 py-2.5 text-sm transition-colors ${
               isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
             }`}
-            onClick={() => !isCleanup && props.onEnterCleanupMode()}
+            onClick={() => !isCleanup && ctx.onEnterCleanupMode()}
           >
             Cleanup Mode
           </button>
@@ -84,9 +54,9 @@ export function Sidebar(props: SidebarProps) {
       {/* Cleanup Panel */}
       {isCleanup && (
         <CleanupPanel
-          onDrawMask={props.onDrawMask}
-          onExitCleanup={props.onExitCleanupMode}
-          onAddCleanupImage={props.onAddCleanupImage}
+          onDrawMask={ctx.onDrawMask}
+          onExitCleanup={ctx.onExitCleanupMode}
+          onAddCleanupImage={ctx.onAddCleanupImage}
         />
       )}
 
@@ -103,16 +73,16 @@ export function Sidebar(props: SidebarProps) {
             </label>
             <FileInput
               accept="image/*"
-              onChange={props.onLoadImage}
+              onChange={ctx.onLoadImage}
               label="Choose Image"
             />
           </div>
 
           {/* 2. Set Scale */}
           <CalibrationPanel
-            onStartCalibration={props.onStartCalibration}
-            onCancelCalibration={props.onCancelCalibration}
-            onApplyCalibration={props.onApplyCalibration}
+            onStartCalibration={ctx.onStartCalibration}
+            onCancelCalibration={ctx.onCancelCalibration}
+            onApplyCalibration={ctx.onApplyCalibration}
           />
 
           {/* 3. Add Content */}
@@ -133,27 +103,27 @@ export function Sidebar(props: SidebarProps) {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="shapes">
-                <ShapePanel onAddShape={props.onAddShape} />
+                <ShapePanel onAddShape={ctx.onAddShape} />
               </TabsContent>
               <TabsContent value="lines">
                 <LinePanel
-                  onStartDrawLine={props.onStartDrawLine}
-                  onCancelDrawLine={props.onCancelDrawLine}
+                  onStartDrawLine={ctx.onStartDrawLine}
+                  onCancelDrawLine={ctx.onCancelDrawLine}
                 />
               </TabsContent>
               <TabsContent value="images">
-                <ImagePanel onAddOverlayImage={props.onAddOverlayImage} />
+                <ImagePanel onAddOverlayImage={ctx.onAddOverlayImage} />
               </TabsContent>
             </Tabs>
           </div>
 
           {/* Objects */}
           <ObjectList
-            selectedObjectId={props.selectedObjectId}
-            onSelect={props.onSelectObject}
-            onDelete={props.onDeleteObject}
-            onMoveUp={props.onMoveObjectUp}
-            onMoveDown={props.onMoveObjectDown}
+            selectedObjectId={ctx.selectedObjectId}
+            onSelect={ctx.onSelectObject}
+            onDelete={ctx.onDeleteObject}
+            onMoveUp={ctx.onMoveObjectUp}
+            onMoveDown={ctx.onMoveObjectDown}
           />
 
           {/* Actions */}
@@ -165,12 +135,12 @@ export function Sidebar(props: SidebarProps) {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={props.onDeleteSelected}
-                disabled={!props.selectedObjectId}
+                onClick={ctx.onDeleteSelected}
+                disabled={!ctx.selectedObjectId}
               >
                 Delete Selected
               </Button>
-              <Button variant="secondary" size="sm" onClick={props.onClearAll}>
+              <Button variant="secondary" size="sm" onClick={ctx.onClearAll}>
                 Clear All
               </Button>
             </div>
@@ -178,12 +148,12 @@ export function Sidebar(props: SidebarProps) {
 
           {/* Storage */}
           <StoragePanel
-            onSave={props.onSave}
-            onLoad={props.onLoad}
-            onClear={props.onClear}
-            onExport={props.onExport}
-            onImport={props.onImport}
-            onToggleAutoSave={props.onToggleAutoSave}
+            onSave={ctx.onSave}
+            onLoad={ctx.onLoad}
+            onClear={ctx.onClear}
+            onExport={ctx.onExport}
+            onImport={ctx.onImport}
+            onToggleAutoSave={ctx.onToggleAutoSave}
           />
         </>
       )}
