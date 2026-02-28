@@ -9,6 +9,7 @@ import type {
   ObjectsSlice,
   UISlice,
   HistorySlice,
+  Camera,
 } from "./types";
 import { canTransitionMode } from "./types";
 import { SHAPE_COLORS, LINE_COLORS, DEFAULTS } from "./constants";
@@ -34,6 +35,7 @@ const initialCanvasState = {
   backgroundImageData: null as string | null,
   calibrationPixelLength: null as number | null,
   showCalibrationInput: false,
+  camera: null as Camera | null,
 };
 
 const initialObjectsState = {
@@ -66,6 +68,18 @@ const createCanvasSlice: StoreSliceCreator<CanvasSlice> = (set) => ({
   setBackgroundImageData: (data) => set({ backgroundImageData: data }),
   setCalibrationPixelLength: (len) => set({ calibrationPixelLength: len }),
   setShowCalibrationInput: (show) => set({ showCalibrationInput: show }),
+  setCamera: (camera) => set({ camera }),
+  updateCameraViewport: (width, height) =>
+    set((state) => {
+      if (!state.camera) return state;
+      return {
+        camera: {
+          ...state.camera,
+          viewportWidth: width,
+          viewportHeight: height,
+        },
+      };
+    }),
 });
 
 // ============================================

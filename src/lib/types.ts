@@ -25,6 +25,23 @@ export interface Point {
   y: number;
 }
 
+// ============================================
+// World-space types (meters)
+// ============================================
+export interface WorldPoint {
+  x: number; // meters
+  y: number; // meters
+}
+
+export interface Camera {
+  pixelsPerMeter: number;
+  zoom: number;
+  panX: number; // canvas-space pan offset (pixels)
+  panY: number; // canvas-space pan offset (pixels)
+  viewportWidth: number; // canvas element width (pixels)
+  viewportHeight: number; // canvas element height (pixels)
+}
+
 export interface SnappedPoint extends Point {
   angle: number;
 }
@@ -42,16 +59,28 @@ export interface ShapeObject extends BaseObject {
   widthM: number;
   heightM: number;
   color: string;
+  worldX?: number; // center X in meters (world-space)
+  worldY?: number; // center Y in meters (world-space)
+  angle?: number; // rotation in degrees
 }
 
 export interface LineObject extends BaseObject {
   type: "line";
   lengthM: number;
   color: string;
+  worldX1?: number; // start X in meters (world-space)
+  worldY1?: number; // start Y in meters (world-space)
+  worldX2?: number; // end X in meters (world-space)
+  worldY2?: number; // end Y in meters (world-space)
 }
 
 export interface MaskObject extends BaseObject {
   type: "mask";
+  worldX?: number; // top-left X in meters (world-space)
+  worldY?: number; // top-left Y in meters (world-space)
+  widthM?: number; // width in meters
+  heightM?: number; // height in meters
+  angle?: number; // rotation in degrees
 }
 
 export interface BackgroundImageObject extends BaseObject {
@@ -144,6 +173,7 @@ export interface StoreSnapshot {
   backgroundImagePosition?: BackgroundImagePosition | null;
   objects: PlannerObject[]; // deep clone of Map values
   objectIdCounter: number;
+  camera?: Camera | null;
 }
 
 export interface FabricObjectSnapshot {
@@ -286,6 +316,7 @@ export interface CanvasSliceState {
   backgroundImageData: string | null;
   calibrationPixelLength: number | null;
   showCalibrationInput: boolean;
+  camera: Camera | null;
 }
 
 export interface CanvasSliceActions {
@@ -294,6 +325,8 @@ export interface CanvasSliceActions {
   setBackgroundImageData: (data: string | null) => void;
   setCalibrationPixelLength: (len: number | null) => void;
   setShowCalibrationInput: (show: boolean) => void;
+  setCamera: (camera: Camera) => void;
+  updateCameraViewport: (width: number, height: number) => void;
 }
 
 export type CanvasSlice = CanvasSliceState & CanvasSliceActions;
