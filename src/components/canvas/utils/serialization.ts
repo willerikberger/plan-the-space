@@ -17,6 +17,9 @@ import type {
   SerializedMaskV4,
   SerializedImage,
   SerializedCamera,
+  SerializedLayers,
+  LayerGroup,
+  LayerEntry,
   ShapeObject,
   LineObject,
   MaskObject,
@@ -25,6 +28,7 @@ import type {
   BackgroundImagePosition,
   Camera,
 } from "@/lib/types";
+import { layerGroupForType } from "@/lib/types";
 
 /** Validate that project data has the expected structure */
 export function validateProjectData(data: unknown): data is SerializedProject {
@@ -132,7 +136,7 @@ export function serializeObject(
   }
 }
 
-/** Build the full project data object for export (v4 format with camera + world coords) */
+/** Build the full project data object for export (v4 format with camera + world coords + layers) */
 export function serializeProject(
   pixelsPerMeter: number | null,
   backgroundImageData: string | null,
@@ -157,6 +161,7 @@ export function serializeProject(
   } | null,
   backgroundImagePosition?: BackgroundImagePosition | null,
   camera?: Camera | null,
+  layers?: Record<LayerGroup, LayerEntry[]> | null,
 ): SerializedProject {
   const serializedObjects: SerializedObject[] = [];
 
@@ -178,12 +183,30 @@ export function serializeProject(
       }
     : undefined;
 
+  const serializedLayers: SerializedLayers | undefined = layers
+    ? {
+        background: layers.background.map((e) => ({
+          objectId: e.objectId,
+          zIndex: e.zIndex,
+        })),
+        masks: layers.masks.map((e) => ({
+          objectId: e.objectId,
+          zIndex: e.zIndex,
+        })),
+        content: layers.content.map((e) => ({
+          objectId: e.objectId,
+          zIndex: e.zIndex,
+        })),
+      }
+    : undefined;
+
   return {
     version: 4,
     pixelsPerMeter,
     backgroundImage: backgroundImageData,
     ...(backgroundImagePosition ? { backgroundImagePosition } : {}),
     ...(serializedCamera ? { camera: serializedCamera } : {}),
+    ...(serializedLayers ? { layers: serializedLayers } : {}),
     savedAt: new Date().toISOString(),
     objects: serializedObjects,
     metadata: { appVersion: "1.0.0", exportedFrom: "plan-the-space" },
@@ -196,6 +219,7 @@ export function deserializeProject(data: SerializedProject): {
   backgroundImageData: string | null;
   backgroundImagePosition?: BackgroundImagePosition;
   camera?: Camera;
+  layers?: Record<LayerGroup, LayerEntry[]>;
   objects: PlannerObject[];
   serializedObjects: SerializedObject[];
 } {
@@ -281,6 +305,28 @@ export function deserializeProject(data: SerializedProject): {
       }
     : undefined;
 
+  // Extract layers from v4 projects, or reconstruct from object types
+  let layers: Record<LayerGroup, LayerEntry[]> | undefined;
+  if (v4Data.layers) {
+    layers = {
+      background: v4Data.layers.background.map((e) => ({
+        objectId: e.objectId,
+        zIndex: e.zIndex,
+      })),
+      masks: v4Data.layers.masks.map((e) => ({
+        objectId: e.objectId,
+        zIndex: e.zIndex,
+      })),
+      content: v4Data.layers.content.map((e) => ({
+        objectId: e.objectId,
+        zIndex: e.zIndex,
+      })),
+    };
+  } else {
+    // Reconstruct layers from object types (v3 migration / missing layers)
+    layers = reconstructLayersFromObjects(objects);
+  }
+
   return {
     pixelsPerMeter: data.pixelsPerMeter,
     backgroundImageData: data.backgroundImage,
@@ -288,9 +334,29 @@ export function deserializeProject(data: SerializedProject): {
       ? { backgroundImagePosition: data.backgroundImagePosition }
       : {}),
     ...(camera ? { camera } : {}),
+    ...(layers ? { layers } : {}),
     objects,
     serializedObjects: data.objects,
   };
+}
+
+/** Reconstruct layer entries from object types when layers data is absent */
+function reconstructLayersFromObjects(
+  objects: PlannerObject[],
+): Record<LayerGroup, LayerEntry[]> {
+  const layers: Record<LayerGroup, LayerEntry[]> = {
+    background: [],
+    masks: [],
+    content: [],
+  };
+  for (const obj of objects) {
+    const group = layerGroupForType(obj.type);
+    const entries = layers[group];
+    const maxZ =
+      entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
+    entries.push({ objectId: obj.id, zIndex: maxZ + 1 });
+  }
+  return layers;
 }
 
 /** Migrate a v2 (or earlier) project to v3 format. Already-v3+ data passes through unchanged. */

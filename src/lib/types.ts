@@ -174,6 +174,7 @@ export interface StoreSnapshot {
   objects: PlannerObject[]; // deep clone of Map values
   objectIdCounter: number;
   camera?: Camera | null;
+  layers?: Record<LayerGroup, LayerEntry[]>;
 }
 
 export interface FabricObjectSnapshot {
@@ -307,9 +308,21 @@ export interface SerializedCamera {
   viewportHeight: number;
 }
 
+export interface SerializedLayerEntry {
+  objectId: number;
+  zIndex: number;
+}
+
+export interface SerializedLayers {
+  background: SerializedLayerEntry[];
+  masks: SerializedLayerEntry[];
+  content: SerializedLayerEntry[];
+}
+
 export interface SerializedProjectV4 extends SerializedProjectBase {
   version: 4;
   camera?: SerializedCamera;
+  layers?: SerializedLayers;
   metadata?: { appVersion?: string; exportedFrom?: string };
 }
 

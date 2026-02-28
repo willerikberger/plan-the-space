@@ -10,6 +10,8 @@ import type {
   SerializedProject,
   BackgroundImagePosition,
   Camera,
+  LayerGroup,
+  LayerEntry,
 } from "@/lib/types";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 import { usePlannerStore } from "@/lib/store";
@@ -26,6 +28,7 @@ export type SerializeProjectFn = (
   getFabricState: (id: number) => FabricStateResult,
   backgroundImagePosition?: BackgroundImagePosition | null,
   camera?: Camera | null,
+  layers?: Record<LayerGroup, LayerEntry[]> | null,
 ) => SerializedProject;
 
 /** Signature for the saveToIDB function */
@@ -69,6 +72,7 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
         (id) => getFabricState(id),
         getBackgroundPosition?.(),
         s.camera,
+        s.layers,
       );
       await saveToIDB(data);
       s.setStatusMessage("Saved to browser storage");
@@ -101,6 +105,7 @@ export function handleBeforeUnload(
     getFabricState,
     getBackgroundPosition?.(),
     s.camera,
+    s.layers,
   );
   // Synchronous best-effort via sendBeacon isn't possible with IDB,
   // but we can try a fire-and-forget save

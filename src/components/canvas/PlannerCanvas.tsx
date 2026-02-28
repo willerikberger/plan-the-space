@@ -297,8 +297,13 @@ export function PlannerCanvas({
       } else {
         await loadProjectFromData(serializedObjects);
       }
+      // Restore saved layer ordering from snapshot
+      if (ss.layers) {
+        usePlannerStore.setState({ layers: ss.layers });
+        reorderObjects();
+      }
     },
-    [clearCanvas, images, loadProjectFromData],
+    [clearCanvas, images, loadProjectFromData, reorderObjects],
   );
 
   const history = useHistory({
@@ -399,45 +404,22 @@ export function PlannerCanvas({
 
   const moveObjectUp = useCallback(
     (id: number) => {
-      const canvas = fabricCanvasRef.current;
-      if (!canvas) return;
-      const refs = allFabricRefsRef.current.get(id);
-      if (!refs) return;
-      const obj = primaryObject(refs);
-      const objects = canvas.getObjects();
-      const currentIdx = objects.indexOf(obj);
-      if (currentIdx < objects.length - 1) {
-        canvas.moveObjectTo(obj, currentIdx + 1);
-        canvas.renderAll();
-        captureSnapshot();
-        triggerAutoSave();
-      }
+      usePlannerStore.getState().moveUpInLayer(id);
+      reorderObjects();
+      captureSnapshot();
+      triggerAutoSave();
     },
-    [fabricCanvasRef, captureSnapshot, triggerAutoSave],
+    [reorderObjects, captureSnapshot, triggerAutoSave],
   );
 
   const moveObjectDown = useCallback(
     (id: number) => {
-      const canvas = fabricCanvasRef.current;
-      if (!canvas) return;
-      const refs = allFabricRefsRef.current.get(id);
-      if (!refs) return;
-      const obj = primaryObject(refs);
-      const objects = canvas.getObjects();
-      const currentIdx = objects.indexOf(obj);
-      const store = usePlannerStore.getState();
-      const minIdx =
-        Array.from(store.objects.values()).filter(
-          (o) => o.type === "mask" || o.type === "backgroundImage",
-        ).length + (images.backgroundRef.current ? 1 : 0);
-      if (currentIdx > minIdx) {
-        canvas.moveObjectTo(obj, currentIdx - 1);
-        canvas.renderAll();
-        captureSnapshot();
-        triggerAutoSave();
-      }
+      usePlannerStore.getState().moveDownInLayer(id);
+      reorderObjects();
+      captureSnapshot();
+      triggerAutoSave();
     },
-    [fabricCanvasRef, images.backgroundRef, captureSnapshot, triggerAutoSave],
+    [reorderObjects, captureSnapshot, triggerAutoSave],
   );
 
   // ============================================
@@ -453,6 +435,7 @@ export function PlannerCanvas({
       getFabricState,
       getBackgroundPosition(),
       s.camera,
+      s.layers,
     );
     await saveToIDB(data);
     s.setStatusMessage("Saved to browser storage");
@@ -507,6 +490,11 @@ export function PlannerCanvas({
       } else {
         await loadProjectFromData(deserialized.serializedObjects);
       }
+      // Restore saved layer ordering (overrides addObject defaults)
+      if (deserialized.layers) {
+        usePlannerStore.setState({ layers: deserialized.layers });
+        reorderObjects();
+      }
       usePlannerStore
         .getState()
         .setStatusMessage("Loaded from browser storage");
@@ -519,7 +507,14 @@ export function PlannerCanvas({
         .setStatusMessage("Failed to load project onto canvas");
       console.error("Load error:", err);
     }
-  }, [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot]);
+  }, [
+    clearCanvas,
+    images,
+    loadProjectFromData,
+    reorderObjects,
+    resetHistory,
+    captureSnapshot,
+  ]);
 
   const clearStorage = useCallback(async () => {
     await clearIDB();
@@ -536,6 +531,7 @@ export function PlannerCanvas({
       getFabricState,
       getBackgroundPosition(),
       s.camera,
+      s.layers,
     );
     downloadProjectAsJson(data);
     s.setStatusMessage("Project exported successfully");
@@ -598,6 +594,11 @@ export function PlannerCanvas({
         } else {
           await loadProjectFromData(deserialized.serializedObjects);
         }
+        // Restore saved layer ordering (overrides addObject defaults)
+        if (deserialized.layers) {
+          usePlannerStore.setState({ layers: deserialized.layers });
+          reorderObjects();
+        }
         usePlannerStore.getState().setStatusMessage("Project imported");
         // Reset history and capture initial state after import
         await resetHistory();
@@ -609,7 +610,14 @@ export function PlannerCanvas({
         console.error("Import load error:", err);
       }
     },
-    [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot],
+    [
+      clearCanvas,
+      images,
+      loadProjectFromData,
+      reorderObjects,
+      resetHistory,
+      captureSnapshot,
+    ],
   );
 
   const toggleAutoSave = useCallback(() => {

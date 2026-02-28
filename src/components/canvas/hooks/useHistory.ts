@@ -94,6 +94,11 @@ export function useHistory({
       objects: clonedObjects,
       objectIdCounter: store.objectIdCounter,
       camera: store.camera,
+      layers: {
+        background: store.layers.background.map((e) => ({ ...e })),
+        masks: store.layers.masks.map((e) => ({ ...e })),
+        content: store.layers.content.map((e) => ({ ...e })),
+      },
     };
 
     // Capture Fabric state for each object

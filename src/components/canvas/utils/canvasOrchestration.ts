@@ -150,8 +150,8 @@ export function clearCanvas(
 }
 
 /**
- * Re-order Fabric objects on the canvas so masks and background images
- * are rendered behind all other objects.
+ * Re-order Fabric objects on the canvas using the store-driven layer system.
+ * Order: backgroundRef (untracked) → background group → masks group → content group.
  */
 export function reorderObjects(
   fabricCanvas: Canvas,
@@ -160,29 +160,35 @@ export function reorderObjects(
 ): void {
   let idx = 0;
 
-  // Background image first
+  // Untracked background image first (will be unified in Phase 4)
   if (backgroundRef.current) {
     fabricCanvas.moveObjectTo(backgroundRef.current, 0);
     idx = 1;
   }
 
   const store = usePlannerStore.getState();
-  // Masks
-  for (const obj of store.objects.values()) {
-    if (obj.type === "mask") {
-      const refs = allFabricRefsRef.current.get(obj.id);
-      if (refs?.type === "mask") {
+  const renderOrder = store.getRenderOrder();
+
+  for (const objectId of renderOrder) {
+    const refs = allFabricRefsRef.current.get(objectId);
+    if (!refs) continue;
+
+    switch (refs.type) {
+      case "shape":
         fabricCanvas.moveObjectTo(refs.rect, idx++);
-      }
-    }
-  }
-  // Background images
-  for (const obj of store.objects.values()) {
-    if (obj.type === "backgroundImage") {
-      const refs = allFabricRefsRef.current.get(obj.id);
-      if (refs?.type === "image") {
+        fabricCanvas.moveObjectTo(refs.label, idx++);
+        fabricCanvas.moveObjectTo(refs.dims, idx++);
+        break;
+      case "line":
+        fabricCanvas.moveObjectTo(refs.line, idx++);
+        fabricCanvas.moveObjectTo(refs.label, idx++);
+        break;
+      case "mask":
+        fabricCanvas.moveObjectTo(refs.rect, idx++);
+        break;
+      case "image":
         fabricCanvas.moveObjectTo(refs.image, idx++);
-      }
+        break;
     }
   }
   fabricCanvas.renderAll();

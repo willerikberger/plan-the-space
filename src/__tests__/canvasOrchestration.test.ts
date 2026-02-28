@@ -488,7 +488,7 @@ describe("reorderObjects", () => {
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 
-  it("moves masks after background, then background images", () => {
+  it("orders objects by layer: background group, then masks, then content", () => {
     const canvas = mockCanvas();
     const maskRefs = mockMaskRefs();
     const imgRefs = mockImageRefs();
@@ -498,25 +498,28 @@ describe("reorderObjects", () => {
     ]);
     const bgRef = makeBgRef(null);
 
-    // Add to store
+    // Add to store — addObject auto-adds to the correct layer group
+    usePlannerStore
+      .getState()
+      .addObject({
+        id: 2,
+        type: "backgroundImage",
+        name: "BG",
+        imageData: "data:bg",
+      });
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
-    usePlannerStore.getState().addObject({
-      id: 2,
-      type: "backgroundImage",
-      name: "BG",
-      imageData: "data:bg",
-    });
 
     reorderObjects(canvas, refsRef, bgRef);
 
-    // Mask should be moved to index 0 (no background image present)
-    expect(canvas.moveObjectTo).toHaveBeenCalledWith(maskRefs.rect, 0);
-    // Background image object to index 1
-    expect(canvas.moveObjectTo).toHaveBeenCalledWith(imgRefs.image, 1);
+    const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
+    // backgroundImage object in background group first (index 0)
+    expect(calls[0]).toEqual([imgRefs.image, 0]);
+    // mask in masks group next (index 1)
+    expect(calls[1]).toEqual([maskRefs.rect, 1]);
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 
-  it("orders: bg image (0), masks (1+), bg objects (after masks)", () => {
+  it("orders: bgRef (0), background group, masks group, content group", () => {
     const canvas = mockCanvas();
     const bgImage = { type: "image" } as any;
     const maskRefs = mockMaskRefs();
@@ -527,23 +530,25 @@ describe("reorderObjects", () => {
     ]);
     const bgRef = makeBgRef(bgImage);
 
+    usePlannerStore
+      .getState()
+      .addObject({
+        id: 2,
+        type: "backgroundImage",
+        name: "BG",
+        imageData: "data:bg",
+      });
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
-    usePlannerStore.getState().addObject({
-      id: 2,
-      type: "backgroundImage",
-      name: "BG",
-      imageData: "data:bg",
-    });
 
     reorderObjects(canvas, refsRef, bgRef);
 
     const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
-    // bg image at 0
+    // Untracked bgRef at 0
     expect(calls[0]).toEqual([bgImage, 0]);
-    // mask at 1
-    expect(calls[1]).toEqual([maskRefs.rect, 1]);
-    // backgroundImage object at 2
-    expect(calls[2]).toEqual([imgRefs.image, 2]);
+    // backgroundImage object in background group at 1
+    expect(calls[1]).toEqual([imgRefs.image, 1]);
+    // mask in masks group at 2
+    expect(calls[2]).toEqual([maskRefs.rect, 2]);
   });
 
   it("handles no background and no masks gracefully", () => {
@@ -557,7 +562,7 @@ describe("reorderObjects", () => {
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 
-  it("does not reorder shapes or lines", () => {
+  it("reorders shapes and lines in the content layer group", () => {
     const canvas = mockCanvas();
     const shapeRefs = mockShapeRefs();
     const lineRefs = mockLineRefs();
@@ -581,8 +586,14 @@ describe("reorderObjects", () => {
 
     reorderObjects(canvas, refsRef, bgRef);
 
-    // moveObjectTo should not be called for shapes or lines
-    expect(canvas.moveObjectTo).not.toHaveBeenCalled();
+    const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
+    // Shape: rect at 0, label at 1, dims at 2
+    expect(calls[0]).toEqual([shapeRefs.rect, 0]);
+    expect(calls[1]).toEqual([shapeRefs.label, 1]);
+    expect(calls[2]).toEqual([shapeRefs.dims, 2]);
+    // Line: line at 3, label at 4
+    expect(calls[3]).toEqual([lineRefs.line, 3]);
+    expect(calls[4]).toEqual([lineRefs.label, 4]);
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 });
