@@ -236,6 +236,9 @@ describe("serializeObject (edge cases)", () => {
     if (result.type === "mask") {
       expect(result.width).toBe(150); // 100 * 1.5
       expect(result.height).toBe(160); // 80 * 2.0
+      // Scale reset to 1 since dimensions are baked in
+      expect(result.scaleX).toBe(1);
+      expect(result.scaleY).toBe(1);
     }
   });
 

@@ -16,14 +16,15 @@ import {
   fitImageScale,
   overlayImageScale,
 } from "@/components/canvas/utils/geometry";
-import type { ImageFabricRefs } from "@/lib/types";
+import type { ImageFabricRefs, BackgroundImagePosition } from "@/lib/types";
 
 export interface UseImagesReturn {
   backgroundRef: React.MutableRefObject<FabricImage | null>;
   loadBackgroundImage: (file: File) => void;
   loadBackgroundFromData: (
     data: string,
-    callback?: () => void,
+    callback?: () => void | Promise<void>,
+    position?: BackgroundImagePosition,
   ) => Promise<void>;
   addOverlayImage: (file: File) => void;
   loadImageObject: (data: {
@@ -61,7 +62,11 @@ export function useImages(
   );
 
   const loadBackgroundFromData = useCallback(
-    async (dataUrl: string, callback?: () => void) => {
+    async (
+      dataUrl: string,
+      callback?: () => void | Promise<void>,
+      position?: BackgroundImagePosition,
+    ) => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
 
@@ -71,24 +76,38 @@ export function useImages(
         canvas.remove(backgroundRef.current);
       }
 
-      const canvasWidth = canvas.getWidth();
-      const canvasHeight = canvas.getHeight();
-      const scale = fitImageScale(
-        img.width!,
-        img.height!,
-        canvasWidth,
-        canvasHeight,
-      );
+      if (position) {
+        // Restore exact saved position/scale
+        img.set({
+          scaleX: position.scaleX,
+          scaleY: position.scaleY,
+          left: position.left,
+          top: position.top,
+          selectable: false,
+          evented: false,
+          hoverCursor: "default",
+        });
+      } else {
+        // First load — fit to canvas
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+        const scale = fitImageScale(
+          img.width!,
+          img.height!,
+          canvasWidth,
+          canvasHeight,
+        );
 
-      img.set({
-        scaleX: scale,
-        scaleY: scale,
-        left: (canvasWidth - img.width! * scale) / 2,
-        top: (canvasHeight - img.height! * scale) / 2,
-        selectable: false,
-        evented: false,
-        hoverCursor: "default",
-      });
+        img.set({
+          scaleX: scale,
+          scaleY: scale,
+          left: (canvasWidth - img.width! * scale) / 2,
+          top: (canvasHeight - img.height! * scale) / 2,
+          selectable: false,
+          evented: false,
+          hoverCursor: "default",
+        });
+      }
       setFabricProps(img, { objectType: "background" });
 
       backgroundRef.current = img;
@@ -101,7 +120,7 @@ export function useImages(
         .setStatusMessage(
           "Image loaded. Set the scale to start adding shapes.",
         );
-      callback?.();
+      await callback?.();
     },
     [fabricCanvasRef],
   );

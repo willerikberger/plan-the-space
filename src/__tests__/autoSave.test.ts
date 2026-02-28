@@ -142,16 +142,14 @@ describe("scheduleAutoSave", () => {
     // Seed the store
     usePlannerStore.getState().setPixelsPerMeter(75);
     usePlannerStore.getState().setBackgroundImageData("data:image/test");
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 0,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 0,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
 
     const opts = makeOptions();
     scheduleAutoSave(opts);
@@ -204,16 +202,14 @@ describe("handleBeforeUnload", () => {
   it("calls serializeProject and saveToIDB with current state", () => {
     usePlannerStore.getState().setPixelsPerMeter(100);
     usePlannerStore.getState().setBackgroundImageData("data:bg");
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 0,
-        type: "shape",
-        name: "S",
-        widthM: 2,
-        heightM: 3,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 0,
+      type: "shape",
+      name: "S",
+      widthM: 2,
+      heightM: 3,
+      color: "r",
+    });
 
     const getFabricState = vi.fn().mockReturnValue(null);
     const serializeProject = vi.fn().mockReturnValue(makeMockProject());
@@ -244,6 +240,17 @@ describe("handleBeforeUnload", () => {
   });
 
   it("does not throw when saveToIDB rejects", () => {
+    usePlannerStore
+      .getState()
+      .addObject({
+        id: 0,
+        type: "shape",
+        name: "S",
+        widthM: 1,
+        heightM: 1,
+        color: "r",
+      });
+
     const getFabricState = vi.fn().mockReturnValue(null);
     const serializeProject = vi.fn().mockReturnValue(makeMockProject());
     const saveToIDB = vi.fn().mockRejectedValue(new Error("fail"));
@@ -255,6 +262,17 @@ describe("handleBeforeUnload", () => {
   });
 
   it("passes getFabricState through to serializeProject", () => {
+    usePlannerStore
+      .getState()
+      .addObject({
+        id: 0,
+        type: "shape",
+        name: "S",
+        widthM: 1,
+        heightM: 1,
+        color: "r",
+      });
+
     const getFabricState = vi
       .fn()
       .mockReturnValue({ left: 10, top: 20, scaleX: 1, scaleY: 1, angle: 0 });
@@ -266,5 +284,17 @@ describe("handleBeforeUnload", () => {
     // The fourth argument to serializeProject should be the getFabricState function
     const callArgs = serializeProject.mock.calls[0];
     expect(callArgs[3]).toBe(getFabricState);
+  });
+
+  it("skips save when store has no objects and no calibration", () => {
+    // Default store state: empty objects, null pixelsPerMeter
+    const getFabricState = vi.fn();
+    const serializeProject = vi.fn();
+    const saveToIDB = vi.fn();
+
+    handleBeforeUnload(getFabricState, serializeProject, saveToIDB);
+
+    expect(serializeProject).not.toHaveBeenCalled();
+    expect(saveToIDB).not.toHaveBeenCalled();
   });
 });

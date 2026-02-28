@@ -20,11 +20,13 @@ import type {
   SerializedObject,
   HistorySnapshot,
   PlannerObject,
+  BackgroundImagePosition,
 } from "@/lib/types";
 import {
   serializeProject,
   deserializeProject,
   serializeObject,
+  validateProjectData,
 } from "@/components/canvas/utils/serialization";
 import { getFabricProp } from "@/components/canvas/utils/fabricHelpers";
 import {
@@ -155,6 +157,18 @@ export function PlannerCanvas({
     clearCanvasUtil(canvas, allFabricRefsRef, images.backgroundRef);
   }, [fabricCanvasRef, images.backgroundRef]);
 
+  const getBackgroundPosition =
+    useCallback((): BackgroundImagePosition | null => {
+      const bg = images.backgroundRef.current;
+      if (!bg) return null;
+      return {
+        left: bg.left ?? 0,
+        top: bg.top ?? 0,
+        scaleX: bg.scaleX ?? 1,
+        scaleY: bg.scaleY ?? 1,
+      };
+    }, [images.backgroundRef]);
+
   const reorderObjects = useCallback(() => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
@@ -233,12 +247,8 @@ export function PlannerCanvas({
         }
       }
 
-      // Load into store
-      usePlannerStore.getState().loadProject({
-        pixelsPerMeter: ss.pixelsPerMeter,
-        backgroundImageData,
-        objects,
-      });
+      // Set calibration — hook loaders will re-add objects via addObject()
+      usePlannerStore.getState().setPixelsPerMeter(ss.pixelsPerMeter);
 
       // Reconstruct Fabric objects from snapshots
       // Build SerializedObject[] from fabricSnapshots + store objects
@@ -274,9 +284,11 @@ export function PlannerCanvas({
 
       if (backgroundImageData) {
         usePlannerStore.getState().setBackgroundImageData(backgroundImageData);
-        await images.loadBackgroundFromData(backgroundImageData, () => {
-          loadProjectFromData(serializedObjects);
-        });
+        await images.loadBackgroundFromData(
+          backgroundImageData,
+          () => loadProjectFromData(serializedObjects),
+          ss.backgroundImagePosition ?? undefined,
+        );
       } else {
         await loadProjectFromData(serializedObjects);
       }
@@ -287,6 +299,7 @@ export function PlannerCanvas({
   const history = useHistory({
     getFabricState,
     restoreFromSnapshot,
+    getBackgroundPosition,
   });
   const { captureSnapshot, undo, redo, resetHistory, isRestoringRef } = history;
 
@@ -307,16 +320,22 @@ export function PlannerCanvas({
       getFabricState,
       serializeProject,
       saveToIDB,
+      getBackgroundPosition,
     });
-  }, [getFabricState, isRestoringRef]);
+  }, [getFabricState, isRestoringRef, getBackgroundPosition]);
 
   // beforeunload — best-effort save on page close
   useEffect(() => {
     const handler = () =>
-      handleBeforeUnload(getFabricState, serializeProject, saveToIDB);
+      handleBeforeUnload(
+        getFabricState,
+        serializeProject,
+        saveToIDB,
+        getBackgroundPosition,
+      );
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [getFabricState]);
+  }, [getFabricState, getBackgroundPosition]);
 
   // ============================================
   // Object management
@@ -427,10 +446,11 @@ export function PlannerCanvas({
       s.backgroundImageData,
       objects,
       getFabricState,
+      getBackgroundPosition(),
     );
     await saveToIDB(data);
     s.setStatusMessage("Saved to browser storage");
-  }, [getFabricState]);
+  }, [getFabricState, getBackgroundPosition]);
 
   const load = useCallback(async () => {
     const data = await loadFromIDB();
@@ -438,28 +458,56 @@ export function PlannerCanvas({
       usePlannerStore.getState().setStatusMessage("No saved project found");
       return;
     }
-    clearCanvas();
 
-    const deserialized = deserializeProject(data);
-    usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
-
-    if (deserialized.backgroundImageData) {
+    // Validate and deserialize BEFORE clearing canvas
+    if (!validateProjectData(data)) {
       usePlannerStore
         .getState()
-        .setBackgroundImageData(deserialized.backgroundImageData);
-      await images.loadBackgroundFromData(
-        deserialized.backgroundImageData,
-        () => {
-          loadProjectFromData(deserialized.serializedObjects);
-        },
-      );
-    } else {
-      await loadProjectFromData(deserialized.serializedObjects);
+        .setStatusMessage("Saved project data is invalid");
+      console.error("Invalid project data in storage:", data);
+      return;
     }
-    usePlannerStore.getState().setStatusMessage("Loaded from browser storage");
-    // Reset history and capture initial state after load
-    await resetHistory();
-    captureSnapshot();
+
+    let deserialized;
+    try {
+      deserialized = deserializeProject(data);
+    } catch (err) {
+      usePlannerStore
+        .getState()
+        .setStatusMessage("Failed to parse saved project");
+      console.error("Deserialization error:", err);
+      return;
+    }
+
+    // Safe to clear now — data is validated
+    try {
+      clearCanvas();
+      usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
+
+      if (deserialized.backgroundImageData) {
+        usePlannerStore
+          .getState()
+          .setBackgroundImageData(deserialized.backgroundImageData);
+        await images.loadBackgroundFromData(
+          deserialized.backgroundImageData,
+          () => loadProjectFromData(deserialized.serializedObjects),
+          deserialized.backgroundImagePosition,
+        );
+      } else {
+        await loadProjectFromData(deserialized.serializedObjects);
+      }
+      usePlannerStore
+        .getState()
+        .setStatusMessage("Loaded from browser storage");
+      // Reset history and capture initial state after load
+      await resetHistory();
+      captureSnapshot();
+    } catch (err) {
+      usePlannerStore
+        .getState()
+        .setStatusMessage("Failed to load project onto canvas");
+      console.error("Load error:", err);
+    }
   }, [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot]);
 
   const clearStorage = useCallback(async () => {
@@ -475,36 +523,74 @@ export function PlannerCanvas({
       s.backgroundImageData,
       objects,
       getFabricState,
+      getBackgroundPosition(),
     );
     downloadProjectAsJson(data);
     s.setStatusMessage("Project exported successfully");
-  }, [getFabricState]);
+  }, [getFabricState, getBackgroundPosition]);
 
   const importJson = useCallback(
     async (file: File) => {
-      const data = await importProjectFromFile(file);
-      clearCanvas();
-
-      const deserialized = deserializeProject(data);
-      usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
-
-      if (deserialized.backgroundImageData) {
+      // Parse and validate file BEFORE clearing canvas
+      let data;
+      try {
+        data = await importProjectFromFile(file);
+      } catch (err) {
         usePlannerStore
           .getState()
-          .setBackgroundImageData(deserialized.backgroundImageData);
-        await images.loadBackgroundFromData(
-          deserialized.backgroundImageData,
-          () => {
-            loadProjectFromData(deserialized.serializedObjects);
-          },
-        );
-      } else {
-        await loadProjectFromData(deserialized.serializedObjects);
+          .setStatusMessage("Failed to read import file");
+        console.error("Import file error:", err);
+        return;
       }
-      usePlannerStore.getState().setStatusMessage("Project imported");
-      // Reset history and capture initial state after import
-      await resetHistory();
-      captureSnapshot();
+
+      if (!validateProjectData(data)) {
+        usePlannerStore
+          .getState()
+          .setStatusMessage("Import file contains invalid project data");
+        console.error("Invalid imported project data:", data);
+        return;
+      }
+
+      let deserialized;
+      try {
+        deserialized = deserializeProject(data);
+      } catch (err) {
+        usePlannerStore
+          .getState()
+          .setStatusMessage("Failed to parse imported project");
+        console.error("Import deserialization error:", err);
+        return;
+      }
+
+      // Safe to clear now — data is validated
+      try {
+        clearCanvas();
+        usePlannerStore
+          .getState()
+          .setPixelsPerMeter(deserialized.pixelsPerMeter);
+
+        if (deserialized.backgroundImageData) {
+          usePlannerStore
+            .getState()
+            .setBackgroundImageData(deserialized.backgroundImageData);
+          await images.loadBackgroundFromData(
+            deserialized.backgroundImageData,
+            () => loadProjectFromData(deserialized.serializedObjects),
+            deserialized.backgroundImagePosition,
+          );
+        } else {
+          await loadProjectFromData(deserialized.serializedObjects);
+        }
+        usePlannerStore.getState().setStatusMessage("Project imported");
+        // Reset history and capture initial state after import
+        await resetHistory();
+        captureSnapshot();
+      } catch (err) {
+        usePlannerStore
+          .getState()
+          .setStatusMessage("Failed to import project onto canvas");
+        console.error("Import load error:", err);
+      }
     },
     [clearCanvas, images, loadProjectFromData, resetHistory, captureSnapshot],
   );

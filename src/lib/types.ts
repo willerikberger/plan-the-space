@@ -141,6 +141,7 @@ export type ImageRef = string; // hash key into image dedup pool
 export interface StoreSnapshot {
   pixelsPerMeter: number | null;
   backgroundImageRef: ImageRef | null;
+  backgroundImagePosition?: BackgroundImagePosition | null;
   objects: PlannerObject[]; // deep clone of Map values
   objectIdCounter: number;
 }
@@ -219,10 +220,18 @@ export type SerializedObject =
   | SerializedMask
   | SerializedImage;
 
+export interface BackgroundImagePosition {
+  left: number;
+  top: number;
+  scaleX: number;
+  scaleY: number;
+}
+
 export interface SerializedProjectBase {
   version: number;
   pixelsPerMeter: number | null;
   backgroundImage: string | null;
+  backgroundImagePosition?: BackgroundImagePosition;
   savedAt: string;
   objects: SerializedObject[];
   id?: string; // IndexedDB key

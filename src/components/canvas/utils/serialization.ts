@@ -19,6 +19,7 @@ import type {
   MaskObject,
   BackgroundImageObject,
   OverlayImageObject,
+  BackgroundImagePosition,
 } from "@/lib/types";
 
 /** Validate that project data has the expected structure */
@@ -101,6 +102,8 @@ export function serializeObject(
         type: "mask",
         width: (fabricState.width ?? 0) * fabricState.scaleX,
         height: (fabricState.height ?? 0) * fabricState.scaleY,
+        scaleX: 1, // dimensions already baked in
+        scaleY: 1, // dimensions already baked in
       } satisfies SerializedMask;
 
     case "backgroundImage":
@@ -138,6 +141,7 @@ export function serializeProject(
     originX?: string;
     originY?: string;
   } | null,
+  backgroundImagePosition?: BackgroundImagePosition | null,
 ): SerializedProject {
   const serializedObjects: SerializedObject[] = [];
 
@@ -152,6 +156,7 @@ export function serializeProject(
     version: 3,
     pixelsPerMeter,
     backgroundImage: backgroundImageData,
+    ...(backgroundImagePosition ? { backgroundImagePosition } : {}),
     savedAt: new Date().toISOString(),
     objects: serializedObjects,
     metadata: { appVersion: "1.0.0", exportedFrom: "plan-the-space" },
@@ -162,6 +167,7 @@ export function serializeProject(
 export function deserializeProject(data: SerializedProject): {
   pixelsPerMeter: number | null;
   backgroundImageData: string | null;
+  backgroundImagePosition?: BackgroundImagePosition;
   objects: PlannerObject[];
   serializedObjects: SerializedObject[];
 } {
@@ -217,6 +223,9 @@ export function deserializeProject(data: SerializedProject): {
   return {
     pixelsPerMeter: data.pixelsPerMeter,
     backgroundImageData: data.backgroundImage,
+    ...(data.backgroundImagePosition
+      ? { backgroundImagePosition: data.backgroundImagePosition }
+      : {}),
     objects,
     serializedObjects: data.objects,
   };

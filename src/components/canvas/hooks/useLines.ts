@@ -43,7 +43,7 @@ export interface UseLinesReturn {
     y2: number;
     lengthM: number;
     color: string;
-    strokeWidth: number;
+    strokeWidth?: number;
     scaleX?: number;
     scaleY?: number;
     angle?: number;
@@ -261,6 +261,9 @@ export function useLines(
       top: number;
       color: string;
       strokeWidth?: number;
+      scaleX?: number;
+      scaleY?: number;
+      angle?: number;
       name: string;
       lengthM: number;
     }) => {
@@ -275,6 +278,9 @@ export function useLines(
         stroke: data.color,
         strokeWidth: data.strokeWidth ?? 3,
         strokeLineCap: "round",
+        scaleX: data.scaleX ?? 1,
+        scaleY: data.scaleY ?? 1,
+        angle: data.angle ?? 0,
         objectId: id,
         objectType: "line",
         lineName: data.name,

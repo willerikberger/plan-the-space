@@ -5,7 +5,11 @@
  * @dependencies constants (AUTOSAVE_DEBOUNCE_MS), store (autoSaveEnabled, objects, pixelsPerMeter, backgroundImageData), canvasOrchestration (FabricStateResult)
  * @usage Called from PlannerCanvas to schedule auto-saves after canvas mutations, and registered as a beforeunload handler for safety saves.
  */
-import type { PlannerObject, SerializedProject } from "@/lib/types";
+import type {
+  PlannerObject,
+  SerializedProject,
+  BackgroundImagePosition,
+} from "@/lib/types";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 import { usePlannerStore } from "@/lib/store";
 import type { FabricStateResult } from "./canvasOrchestration";
@@ -19,6 +23,7 @@ export type SerializeProjectFn = (
   backgroundImageData: string | null,
   objects: PlannerObject[],
   getFabricState: (id: number) => FabricStateResult,
+  backgroundImagePosition?: BackgroundImagePosition | null,
 ) => SerializedProject;
 
 /** Signature for the saveToIDB function */
@@ -30,6 +35,7 @@ export interface ScheduleAutoSaveOptions {
   getFabricState: GetFabricStateFn;
   serializeProject: SerializeProjectFn;
   saveToIDB: SaveToIDBFn;
+  getBackgroundPosition?: () => BackgroundImagePosition | null;
 }
 
 /**
@@ -38,8 +44,14 @@ export interface ScheduleAutoSaveOptions {
  * at execution time (inside the timer).
  */
 export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
-  const { isRestoring, timerRef, getFabricState, serializeProject, saveToIDB } =
-    options;
+  const {
+    isRestoring,
+    timerRef,
+    getFabricState,
+    serializeProject,
+    saveToIDB,
+    getBackgroundPosition,
+  } = options;
   if (isRestoring) return;
   const store = usePlannerStore.getState();
   if (!store.autoSaveEnabled) return;
@@ -53,6 +65,7 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
         s.backgroundImageData,
         objects,
         (id) => getFabricState(id),
+        getBackgroundPosition?.(),
       );
       await saveToIDB(data);
       s.setStatusMessage("Saved to browser storage");
@@ -71,15 +84,19 @@ export function handleBeforeUnload(
   getFabricState: GetFabricStateFn,
   serializeProject: SerializeProjectFn,
   saveToIDB: SaveToIDBFn,
+  getBackgroundPosition?: () => BackgroundImagePosition | null,
 ): void {
   const s = usePlannerStore.getState();
   if (!s.autoSaveEnabled) return;
   const objects = Array.from(s.objects.values());
+  // Don't overwrite saved data with an empty project (fresh page)
+  if (objects.length === 0 && s.pixelsPerMeter === null) return;
   const data = serializeProject(
     s.pixelsPerMeter,
     s.backgroundImageData,
     objects,
     getFabricState,
+    getBackgroundPosition?.(),
   );
   // Synchronous best-effort via sendBeacon isn't possible with IDB,
   // but we can try a fire-and-forget save

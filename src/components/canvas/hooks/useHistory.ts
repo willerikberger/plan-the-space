@@ -18,10 +18,17 @@ import type {
 } from "@/lib/types";
 
 type GetFabricStateFn = (id: number) => Record<string, unknown> | null;
+type GetBackgroundPositionFn = () => {
+  left: number;
+  top: number;
+  scaleX: number;
+  scaleY: number;
+} | null;
 
 interface UseHistoryOptions {
   getFabricState: GetFabricStateFn;
   restoreFromSnapshot: (snapshot: HistorySnapshot) => Promise<void>;
+  getBackgroundPosition?: GetBackgroundPositionFn;
 }
 
 export interface UseHistoryReturn {
@@ -36,6 +43,7 @@ export interface UseHistoryReturn {
 export function useHistory({
   getFabricState,
   restoreFromSnapshot,
+  getBackgroundPosition,
 }: UseHistoryOptions): UseHistoryReturn {
   const managerRef = useRef(new HistoryManager());
   const isRestoringRef = useRef(false);
@@ -82,6 +90,7 @@ export function useHistory({
     const storeSnapshot: StoreSnapshot = {
       pixelsPerMeter: store.pixelsPerMeter,
       backgroundImageRef,
+      backgroundImagePosition: getBackgroundPosition?.() ?? null,
       objects: clonedObjects,
       objectIdCounter: store.objectIdCounter,
     };
@@ -107,7 +116,7 @@ export function useHistory({
 
     manager.push(snapshot);
     syncHistoryState();
-  }, [getFabricState, syncHistoryState]);
+  }, [getFabricState, syncHistoryState, getBackgroundPosition]);
 
   const undo = useCallback(async () => {
     if (isRestoringRef.current) return;
