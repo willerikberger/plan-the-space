@@ -1,36 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock FabricText since its constructor calls canvas 2D context methods
-// (initDimensions -> calcTextWidth -> measureLine) that don't exist in happy-dom.
-// Rect, Line, and Circle work fine because they don't measure text.
-vi.mock("fabric", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("fabric")>();
-  class MockFabricText {
-    [key: string]: unknown;
-    constructor(text: string, options: Record<string, unknown> = {}) {
-      this.text = text;
-      Object.assign(this, options);
-    }
-  }
-  return {
-    ...actual,
-    FabricText: MockFabricText,
-  };
-});
-
 import {
   getFabricProp,
   setFabricProps,
-  createShapeRect,
-  createShapeLabel,
-  createShapeDims,
+  createMeasuredRect,
+  createMeasuredLine,
   createCalibrationLine,
   createCalibrationEndpoint,
-  createDrawingLine,
-  createLineLabel,
   createMaskRect,
 } from "@/components/canvas/utils/fabricHelpers";
-import { DEFAULTS, THEME } from "@/lib/constants";
+import { THEME } from "@/lib/constants";
 import type { FabricObject } from "fabric";
 
 beforeEach(() => {
@@ -138,12 +117,12 @@ describe("setFabricProps", () => {
 });
 
 // ============================================
-// Shape factories
+// Self-labeling shape factory (MeasuredRect)
 // ============================================
 
-describe("createShapeRect", () => {
-  it("creates a Rect with correct standard properties", () => {
-    const rect = createShapeRect({
+describe("createMeasuredRect", () => {
+  it("creates a MeasuredRect with correct standard properties", () => {
+    const rect = createMeasuredRect({
       left: 100,
       top: 200,
       width: 80,
@@ -169,8 +148,8 @@ describe("createShapeRect", () => {
     expect(rect.ry).toBe(4);
   });
 
-  it("stores custom properties on the Rect", () => {
-    const rect = createShapeRect({
+  it("stores custom properties on the rect", () => {
+    const rect = createMeasuredRect({
       left: 0,
       top: 0,
       width: 50,
@@ -209,8 +188,29 @@ describe("createShapeRect", () => {
     );
   });
 
+  it("sets self-labeling properties (label, widthM, heightM)", () => {
+    const rect = createMeasuredRect({
+      left: 0,
+      top: 0,
+      width: 50,
+      height: 50,
+      fill: "blue",
+      stroke: "blue",
+      objectId: 0,
+      shapeName: "Deck",
+      shapeWidthM: 3,
+      shapeHeightM: 4,
+      baseWidthPx: 50,
+      baseHeightPx: 50,
+    });
+
+    expect(rect.label).toBe("Deck");
+    expect(rect.widthM).toBe(3);
+    expect(rect.heightM).toBe(4);
+  });
+
   it("defaults scaleX, scaleY to 1 and angle to 0", () => {
-    const rect = createShapeRect({
+    const rect = createMeasuredRect({
       left: 0,
       top: 0,
       width: 50,
@@ -231,7 +231,7 @@ describe("createShapeRect", () => {
   });
 
   it("applies explicit scaleX, scaleY, and angle", () => {
-    const rect = createShapeRect({
+    const rect = createMeasuredRect({
       left: 10,
       top: 20,
       width: 50,
@@ -252,120 +252,6 @@ describe("createShapeRect", () => {
     expect(rect.scaleX).toBe(2);
     expect(rect.scaleY).toBe(3);
     expect(rect.angle).toBe(45);
-  });
-});
-
-describe("createShapeLabel", () => {
-  it("creates a FabricText with correct properties", () => {
-    const label = createShapeLabel({
-      text: "Garden",
-      left: 140,
-      top: 230,
-      parentId: 1,
-    });
-
-    expect(label.text).toBe("Garden");
-    expect(label.left).toBe(140);
-    expect(label.top).toBe(230);
-    expect(label.fontSize).toBe(DEFAULTS.labelFontSize);
-    expect(label.fill).toBe("white");
-    expect(label.fontFamily).toBe("Arial");
-    expect(label.originX).toBe("center");
-    expect(label.originY).toBe("center");
-    expect(label.selectable).toBe(false);
-    expect(label.evented).toBe(false);
-  });
-
-  it("stores objectType and parentId as custom props", () => {
-    const label = createShapeLabel({
-      text: "Test",
-      left: 0,
-      top: 0,
-      parentId: 42,
-    });
-
-    expect(getFabricProp(label as unknown as FabricObject, "objectType")).toBe(
-      "shapeLabel",
-    );
-    expect(getFabricProp(label as unknown as FabricObject, "parentId")).toBe(
-      42,
-    );
-  });
-
-  it("defaults angle to 0", () => {
-    const label = createShapeLabel({
-      text: "Test",
-      left: 0,
-      top: 0,
-      parentId: 1,
-    });
-    expect(label.angle).toBe(0);
-  });
-
-  it("applies explicit angle", () => {
-    const label = createShapeLabel({
-      text: "Test",
-      left: 0,
-      top: 0,
-      angle: 90,
-      parentId: 1,
-    });
-    expect(label.angle).toBe(90);
-  });
-});
-
-describe("createShapeDims", () => {
-  it("creates a FabricText with correct properties", () => {
-    const dims = createShapeDims({
-      text: "2m x 3m",
-      left: 140,
-      top: 250,
-      parentId: 1,
-    });
-
-    expect(dims.text).toBe("2m x 3m");
-    expect(dims.left).toBe(140);
-    expect(dims.top).toBe(250);
-    expect(dims.fontSize).toBe(DEFAULTS.dimsFontSize);
-    expect(dims.fill).toBe("rgba(255,255,255,0.7)");
-    expect(dims.fontFamily).toBe("Arial");
-    expect(dims.originX).toBe("center");
-    expect(dims.originY).toBe("center");
-    expect(dims.selectable).toBe(false);
-    expect(dims.evented).toBe(false);
-  });
-
-  it("stores objectType and parentId as custom props", () => {
-    const dims = createShapeDims({
-      text: "1m x 1m",
-      left: 0,
-      top: 0,
-      parentId: 99,
-    });
-
-    expect(getFabricProp(dims as unknown as FabricObject, "objectType")).toBe(
-      "shapeDims",
-    );
-    expect(getFabricProp(dims as unknown as FabricObject, "parentId")).toBe(99);
-  });
-
-  it("defaults angle to 0 and applies explicit angle", () => {
-    const defaultDims = createShapeDims({
-      text: "a",
-      left: 0,
-      top: 0,
-      parentId: 1,
-    });
-    expect(defaultDims.angle).toBe(0);
-
-    const rotatedDims = createShapeDims({
-      text: "a",
-      left: 0,
-      top: 0,
-      angle: 180,
-      parentId: 1,
-    });
-    expect(rotatedDims.angle).toBe(180);
   });
 });
 
@@ -416,18 +302,20 @@ describe("createCalibrationEndpoint", () => {
 });
 
 // ============================================
-// Line factories
+// Self-labeling line factory (MeasuredLine)
 // ============================================
 
-describe("createDrawingLine", () => {
+describe("createMeasuredLine", () => {
   it("creates a line with given stroke properties", () => {
-    const line = createDrawingLine({
+    const line = createMeasuredLine({
       x1: 0,
       y1: 0,
       x2: 200,
       y2: 150,
       stroke: "rgba(244, 67, 54, 1)",
       strokeWidth: 5,
+      label: "5.2m",
+      lengthM: 5.2,
     });
 
     expect(line.x1).toBe(0);
@@ -440,55 +328,66 @@ describe("createDrawingLine", () => {
     expect(line.evented).toBe(false);
     expect(line.strokeLineCap).toBe("round");
   });
-});
 
-describe("createLineLabel", () => {
-  it("creates a text label with background", () => {
-    const label = createLineLabel({
-      text: "5.2m",
-      left: 100,
-      top: 75,
-      fill: "rgba(244, 67, 54, 1)",
+  it("sets self-labeling properties (label, lengthM, labelColor)", () => {
+    const line = createMeasuredLine({
+      x1: 0,
+      y1: 0,
+      x2: 100,
+      y2: 0,
+      stroke: "red",
+      strokeWidth: 3,
+      label: "3.0m",
+      lengthM: 3.0,
     });
 
-    expect(label.text).toBe("5.2m");
-    expect(label.left).toBe(100);
-    expect(label.top).toBe(75);
-    expect(label.fontSize).toBe(DEFAULTS.lineLabelFontSize);
-    expect(label.fill).toBe("rgba(244, 67, 54, 1)");
-    expect(label.fontFamily).toBe("Arial");
-    expect(label.originX).toBe("center");
-    expect(label.originY).toBe("center");
-    expect(label.selectable).toBe(false);
-    expect(label.evented).toBe(false);
-    expect(label.fontWeight).toBe("bold");
-    expect(label.backgroundColor).toBe("rgba(0,0,0,0.7)");
-    expect(label.padding).toBe(5);
+    expect(line.label).toBe("3.0m");
+    expect(line.lengthM).toBe(3.0);
+    expect(line.labelColor).toBe("red");
   });
 
-  it("stores objectType as lineLabel", () => {
-    const label = createLineLabel({ text: "x", left: 0, top: 0, fill: "red" });
-    expect(getFabricProp(label as unknown as FabricObject, "objectType")).toBe(
-      "lineLabel",
+  it("stores custom properties when objectId is provided", () => {
+    const line = createMeasuredLine({
+      x1: 0,
+      y1: 0,
+      x2: 100,
+      y2: 0,
+      stroke: "blue",
+      strokeWidth: 3,
+      label: "2.5m",
+      lengthM: 2.5,
+      objectId: 7,
+      lineName: "Wall",
+      lineColor: "blue",
+    });
+
+    expect(getFabricProp(line as unknown as FabricObject, "objectId")).toBe(7);
+    expect(getFabricProp(line as unknown as FabricObject, "objectType")).toBe(
+      "line",
+    );
+    expect(getFabricProp(line as unknown as FabricObject, "lineName")).toBe(
+      "Wall",
+    );
+    expect(getFabricProp(line as unknown as FabricObject, "lineColor")).toBe(
+      "blue",
     );
   });
 
-  it("includes parentId when provided", () => {
-    const label = createLineLabel({
-      text: "x",
-      left: 0,
-      top: 0,
-      fill: "red",
-      parentId: 7,
+  it("defaults scaleX, scaleY to 1 and angle to 0", () => {
+    const line = createMeasuredLine({
+      x1: 0,
+      y1: 0,
+      x2: 50,
+      y2: 0,
+      stroke: "red",
+      strokeWidth: 3,
+      label: "1m",
+      lengthM: 1,
     });
-    expect(getFabricProp(label as unknown as FabricObject, "parentId")).toBe(7);
-  });
 
-  it("omits parentId when not provided", () => {
-    const label = createLineLabel({ text: "x", left: 0, top: 0, fill: "red" });
-    expect(
-      getFabricProp(label as unknown as FabricObject, "parentId"),
-    ).toBeUndefined();
+    expect(line.scaleX).toBe(1);
+    expect(line.scaleY).toBe(1);
+    expect(line.angle).toBe(0);
   });
 });
 

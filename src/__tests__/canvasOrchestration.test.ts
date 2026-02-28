@@ -45,7 +45,7 @@ function mockCanvas() {
   } as unknown as import("fabric").Canvas;
 }
 
-/** Minimal shape fabric refs (rect + label + dims). */
+/** Minimal shape fabric refs (rect only — labels self-render via MeasuredRect). */
 function mockShapeRefs(
   overrides: Record<string, unknown> = {},
 ): ShapeFabricRefs {
@@ -63,12 +63,10 @@ function mockShapeRefs(
       baseHeightPx: 60,
       ...overrides,
     } as any,
-    label: { text: "Label" } as any,
-    dims: { text: "2m x 3m" } as any,
   };
 }
 
-/** Minimal line fabric refs (line + label). */
+/** Minimal line fabric refs (line only — labels self-render via MeasuredLine). */
 function mockLineRefs(overrides: Record<string, unknown> = {}): LineFabricRefs {
   return {
     type: "line",
@@ -85,7 +83,6 @@ function mockLineRefs(overrides: Record<string, unknown> = {}): LineFabricRefs {
       strokeWidth: 3,
       ...overrides,
     } as any,
-    label: { text: "5m" } as any,
   };
 }
 
@@ -315,7 +312,7 @@ describe("clearCanvas", () => {
     expect(refsRef.current.size).toBe(0);
   });
 
-  it("removes rect, label, and dims for shapes", () => {
+  it("removes rect for shapes", () => {
     const canvas = mockCanvas();
     const shapeRefs = mockShapeRefs();
     const refsRef = makeRefsRef([[1, shapeRefs]]);
@@ -323,14 +320,10 @@ describe("clearCanvas", () => {
 
     clearCanvas(canvas, refsRef, bgRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(
-      shapeRefs.rect,
-      shapeRefs.label,
-      shapeRefs.dims,
-    );
+    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.rect);
   });
 
-  it("removes line and label for line refs", () => {
+  it("removes line for line refs", () => {
     const canvas = mockCanvas();
     const lineRefs = mockLineRefs();
     const refsRef = makeRefsRef([[2, lineRefs]]);
@@ -338,7 +331,7 @@ describe("clearCanvas", () => {
 
     clearCanvas(canvas, refsRef, bgRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line, lineRefs.label);
+    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line);
   });
 
   it("removes image for image refs", () => {
@@ -357,7 +350,7 @@ describe("clearCanvas", () => {
 // deleteObject
 // ---------------------------------------------------------------------------
 describe("deleteObject", () => {
-  it("removes a shape and all its sub-objects from canvas", () => {
+  it("removes a shape from canvas", () => {
     const canvas = mockCanvas();
     const shapeRefs = mockShapeRefs();
     const refsRef = makeRefsRef([[1, shapeRefs]]);
@@ -373,17 +366,13 @@ describe("deleteObject", () => {
 
     deleteObject(1, canvas, refsRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(
-      shapeRefs.rect,
-      shapeRefs.label,
-      shapeRefs.dims,
-    );
+    expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.rect);
     expect(refsRef.current.has(1)).toBe(false);
     expect(usePlannerStore.getState().objects.has(1)).toBe(false);
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 
-  it("removes a line and its label from canvas", () => {
+  it("removes a line from canvas", () => {
     const canvas = mockCanvas();
     const lineRefs = mockLineRefs();
     const refsRef = makeRefsRef([[2, lineRefs]]);
@@ -394,7 +383,7 @@ describe("deleteObject", () => {
 
     deleteObject(2, canvas, refsRef);
 
-    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line, lineRefs.label);
+    expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line);
     expect(refsRef.current.has(2)).toBe(false);
     expect(usePlannerStore.getState().objects.has(2)).toBe(false);
   });
@@ -499,14 +488,12 @@ describe("reorderObjects", () => {
     const bgRef = makeBgRef(null);
 
     // Add to store — addObject auto-adds to the correct layer group
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 2,
-        type: "backgroundImage",
-        name: "BG",
-        imageData: "data:bg",
-      });
+    usePlannerStore.getState().addObject({
+      id: 2,
+      type: "backgroundImage",
+      name: "BG",
+      imageData: "data:bg",
+    });
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
 
     reorderObjects(canvas, refsRef, bgRef);
@@ -530,14 +517,12 @@ describe("reorderObjects", () => {
     ]);
     const bgRef = makeBgRef(bgImage);
 
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 2,
-        type: "backgroundImage",
-        name: "BG",
-        imageData: "data:bg",
-      });
+    usePlannerStore.getState().addObject({
+      id: 2,
+      type: "backgroundImage",
+      name: "BG",
+      imageData: "data:bg",
+    });
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
 
     reorderObjects(canvas, refsRef, bgRef);
@@ -587,13 +572,10 @@ describe("reorderObjects", () => {
     reorderObjects(canvas, refsRef, bgRef);
 
     const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
-    // Shape: rect at 0, label at 1, dims at 2
+    // Shape: single rect at 0
     expect(calls[0]).toEqual([shapeRefs.rect, 0]);
-    expect(calls[1]).toEqual([shapeRefs.label, 1]);
-    expect(calls[2]).toEqual([shapeRefs.dims, 2]);
-    // Line: line at 3, label at 4
-    expect(calls[3]).toEqual([lineRefs.line, 3]);
-    expect(calls[4]).toEqual([lineRefs.label, 4]);
+    // Line: single line at 1
+    expect(calls[1]).toEqual([lineRefs.line, 1]);
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 });

@@ -2,18 +2,16 @@
  * @module useLines
  * @description Handles drawing, snapping, and managing measurement lines on the Fabric canvas.
  * Lines snap to 45-degree angles and display real-world length labels computed from the calibration scale.
- * @dependencies fabricHelpers (createDrawingLine, createLineLabel, getFabricProp, setFabricProps), geometry (snapTo45Degrees, distance, roundToDecimal, midpoint), store, constants (MIN_LINE_LENGTH_PX), types (LineFabricRefs)
+ * @dependencies fabricHelpers (createMeasuredLine), geometry (snapTo45Degrees, distance, roundToDecimal), store, constants (MIN_LINE_LENGTH_PX), types (LineFabricRefs)
  * @usage Called from PlannerCanvas; line-drawing callbacks are routed through useCanvasEvents and startLineDrawing is exposed via the imperative handle.
  */
 "use client";
 
 import { useRef, useCallback } from "react";
-import { Line as FabricLine } from "fabric";
-import type { Canvas, Line, FabricText } from "fabric";
+import type { Canvas } from "fabric";
 import { usePlannerStore } from "@/lib/store";
 import {
-  createDrawingLine,
-  createLineLabel,
+  createMeasuredLine,
   getFabricProp,
   setFabricProps,
 } from "@/components/canvas/utils/fabricHelpers";
@@ -21,7 +19,6 @@ import {
   snapTo45Degrees,
   distance,
   roundToDecimal,
-  midpoint,
 } from "@/components/canvas/utils/geometry";
 import {
   canvasToWorld,
@@ -29,6 +26,7 @@ import {
 } from "@/components/canvas/utils/coordinates";
 import { MIN_LINE_LENGTH_PX } from "@/lib/constants";
 import type { Point, LineFabricRefs } from "@/lib/types";
+import type { MeasuredLine } from "@/components/canvas/fabricClasses/MeasuredLine";
 
 export interface UseLinesReturn {
   lineStartRef: React.RefObject<Point | null>;
@@ -37,7 +35,6 @@ export interface UseLinesReturn {
   handleLineDrawStart: (pointer: Point) => void;
   updateDrawingLine: (pointer: Point) => void;
   finishDrawingLine: () => void;
-  updateLineLabel: (line: Line) => void;
   loadLine: (data: {
     left: number;
     top: number;
@@ -64,8 +61,7 @@ export function useLines(
   fabricRefsRef: React.RefObject<Map<number, LineFabricRefs>>,
 ): UseLinesReturn {
   const lineStartRef = useRef<Point | null>(null);
-  const currentLineRef = useRef<Line | null>(null);
-  const currentLabelRef = useRef<FabricText | null>(null);
+  const currentLineRef = useRef<MeasuredLine | null>(null);
 
   const setObjectsSelectable = useCallback(
     (selectable: boolean) => {
@@ -90,7 +86,6 @@ export function useLines(
     if (!canvas) return;
     lineStartRef.current = null;
     currentLineRef.current = null;
-    currentLabelRef.current = null;
 
     usePlannerStore.getState().setMode("drawing-line");
     usePlannerStore
@@ -108,9 +103,7 @@ export function useLines(
     if (!canvas) return;
 
     if (currentLineRef.current) canvas.remove(currentLineRef.current);
-    if (currentLabelRef.current) canvas.remove(currentLabelRef.current);
     currentLineRef.current = null;
-    currentLabelRef.current = null;
     lineStartRef.current = null;
 
     usePlannerStore.getState().setMode("normal");
@@ -128,25 +121,19 @@ export function useLines(
 
       lineStartRef.current = { x: pointer.x, y: pointer.y };
 
-      const line = createDrawingLine({
+      const line = createMeasuredLine({
         x1: pointer.x,
         y1: pointer.y,
         x2: pointer.x,
         y2: pointer.y,
         stroke: store.selectedLineColor,
         strokeWidth: store.lineWidth,
-      });
-
-      const label = createLineLabel({
-        text: "0.0m",
-        left: pointer.x,
-        top: pointer.y - 20,
-        fill: store.selectedLineColor,
+        label: "0.0m",
+        lengthM: 0,
       });
 
       currentLineRef.current = line;
-      currentLabelRef.current = label;
-      canvas.add(line, label);
+      canvas.add(line);
     },
     [fabricCanvasRef],
   );
@@ -155,9 +142,8 @@ export function useLines(
     (pointer: Point) => {
       const canvas = fabricCanvasRef.current;
       const line = currentLineRef.current;
-      const label = currentLabelRef.current;
       const start = lineStartRef.current;
-      if (!canvas || !line || !label || !start) return;
+      if (!canvas || !line || !start) return;
 
       const snapped = snapTo45Degrees(start.x, start.y, pointer.x, pointer.y);
       line.set({ x2: snapped.x, y2: snapped.y });
@@ -167,9 +153,11 @@ export function useLines(
       const meterLen = store.pixelsPerMeter
         ? roundToDecimal(pxLen / store.pixelsPerMeter, 1)
         : 0;
-      const mid = midpoint(start, snapped);
 
-      label.set({ text: `${meterLen}m`, left: mid.x, top: mid.y - 15 });
+      // Update self-rendering label on the MeasuredLine
+      line.label = `${meterLen}m`;
+      line.lengthM = meterLen;
+
       canvas.renderAll();
       store.setStatusMessage(`Line length: ${meterLen}m`);
     },
@@ -179,9 +167,8 @@ export function useLines(
   const finishDrawingLine = useCallback(() => {
     const canvas = fabricCanvasRef.current;
     const line = currentLineRef.current;
-    const label = currentLabelRef.current;
     const start = lineStartRef.current;
-    if (!canvas || !line || !label || !start) return;
+    if (!canvas || !line || !start) return;
 
     const x1 = line.x1!;
     const y1 = line.y1!;
@@ -191,9 +178,7 @@ export function useLines(
 
     if (pxLen < MIN_LINE_LENGTH_PX) {
       canvas.remove(line);
-      canvas.remove(label);
       currentLineRef.current = null;
-      currentLabelRef.current = null;
       lineStartRef.current = null;
       usePlannerStore.getState().setStatusMessage("Line too short, cancelled");
       return;
@@ -208,6 +193,8 @@ export function useLines(
     const lineColor = store.selectedLineColor;
 
     line.set({ selectable: true, evented: true });
+    line.label = `${meterLen}m`;
+    line.lengthM = meterLen;
     setFabricProps(line, {
       objectId: id,
       objectType: "line",
@@ -216,13 +203,7 @@ export function useLines(
       lengthM: meterLen,
     });
 
-    label.set({ text: `${meterLen}m` });
-    setFabricProps(label, {
-      objectType: "lineLabel",
-      parentId: id,
-    });
-
-    fabricRefsRef.current.set(id, { type: "line", line, label });
+    fabricRefsRef.current.set(id, { type: "line", line });
 
     // Compute world coordinates if camera is available
     const camera = store.camera;
@@ -245,31 +226,12 @@ export function useLines(
     });
 
     currentLineRef.current = null;
-    currentLabelRef.current = null;
     lineStartRef.current = null;
 
     store.setStatusMessage(
       `Added "${lineName}" (${meterLen}m) - Click to draw another line`,
     );
   }, [fabricCanvasRef, fabricRefsRef]);
-
-  const updateLineLabel = useCallback(
-    (line: Line) => {
-      const id = getFabricProp(line, "objectId");
-      if (id == null) return;
-      const refs = fabricRefsRef.current.get(id);
-      if (!refs || refs.type !== "line") return;
-
-      const x1 = (line.x1 ?? 0) + (line.left ?? 0);
-      const y1 = (line.y1 ?? 0) + (line.top ?? 0);
-      const x2 = (line.x2 ?? 0) + (line.left ?? 0);
-      const y2 = (line.y2 ?? 0) + (line.top ?? 0);
-      const mid = midpoint({ x: x1, y: y1 }, { x: x2, y: y2 });
-
-      refs.label.set({ left: mid.x, top: mid.y - 15 });
-    },
-    [fabricRefsRef],
-  );
 
   const loadLine = useCallback(
     (data: {
@@ -323,39 +285,29 @@ export function useLines(
         lineY2 = p2.y - lineTop;
       }
 
-      const line = new FabricLine([lineX1, lineY1, lineX2, lineY2], {
+      const line = createMeasuredLine({
+        x1: lineX1,
+        y1: lineY1,
+        x2: lineX2,
+        y2: lineY2,
         left: lineLeft,
         top: lineTop,
         stroke: data.color,
         strokeWidth: data.strokeWidth ?? 3,
-        strokeLineCap: "round",
-        scaleX: data.scaleX ?? 1,
-        scaleY: data.scaleY ?? 1,
-        angle: data.angle ?? 0,
+        label: `${data.lengthM}m`,
+        lengthM: data.lengthM,
         objectId: id,
-        objectType: "line",
         lineName: data.name,
         lineColor: data.color,
-        lengthM: data.lengthM,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-
-      const absX1 = lineX1 + lineLeft;
-      const absY1 = lineY1 + lineTop;
-      const absX2 = lineX2 + lineLeft;
-      const absY2 = lineY2 + lineTop;
-      const mid = midpoint({ x: absX1, y: absY1 }, { x: absX2, y: absY2 });
-
-      const label = createLineLabel({
-        text: `${data.lengthM}m`,
-        left: mid.x,
-        top: mid.y - 15,
-        fill: data.color,
-        parentId: id,
+        selectable: true,
+        evented: true,
+        scaleX: data.scaleX,
+        scaleY: data.scaleY,
+        angle: data.angle,
       });
 
-      canvas.add(line, label);
-      fabricRefsRef.current.set(id, { type: "line", line, label });
+      canvas.add(line);
+      fabricRefsRef.current.set(id, { type: "line", line });
 
       store.addObject({
         id,
@@ -379,7 +331,6 @@ export function useLines(
     handleLineDrawStart,
     updateDrawingLine,
     finishDrawingLine,
-    updateLineLabel,
     loadLine,
   };
 }

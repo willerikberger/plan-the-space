@@ -663,7 +663,6 @@ export function PlannerCanvas({
       triggerAutoSave();
     }, [lines, captureSnapshot, triggerAutoSave]),
     lineStartRef: lines.lineStartRef,
-    updateLineLabel: lines.updateLineLabel,
     handleMaskDrawStart: cleanup.handleMaskDrawStart,
     updateMaskRect: cleanup.updateMaskRect,
     finishMaskRect: useCallback(() => {
@@ -671,7 +670,6 @@ export function PlannerCanvas({
       captureSnapshot();
       triggerAutoSave();
     }, [cleanup, captureSnapshot, triggerAutoSave]),
-    updateShapeLabels: shapes.updateShapeLabels,
     updateShapeDimensions: shapes.updateShapeDimensions,
     startPan: panZoom.startPan,
     movePan: panZoom.movePan,

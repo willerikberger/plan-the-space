@@ -1,20 +1,19 @@
 /**
  * @module useShapes
  * @description Manages creation, update, and loading of rectangular shape objects on the Fabric canvas.
- * Syncs Fabric rect/label/dims objects with Zustand store metadata and converts between meters and pixels.
- * @dependencies fabricHelpers (createShapeRect, createShapeLabel, createShapeDims, getFabricProp), geometry (roundToDecimal), store, types (ShapeFabricRefs)
+ * Syncs MeasuredRect objects with Zustand store metadata and converts between meters and pixels.
+ * @dependencies fabricHelpers (createMeasuredRect), geometry (roundToDecimal), store, types (ShapeFabricRefs)
  * @usage Called from PlannerCanvas to provide shape CRUD operations; addShape is exposed via the imperative handle to the sidebar.
  */
 "use client";
 
 import { useCallback } from "react";
-import type { Canvas, Rect } from "fabric";
+import type { Canvas } from "fabric";
+import type { MeasuredRect } from "@/components/canvas/fabricClasses/MeasuredRect";
 import { usePlannerStore } from "@/lib/store";
 
 import {
-  createShapeRect,
-  createShapeLabel,
-  createShapeDims,
+  createMeasuredRect,
   getFabricProp,
 } from "@/components/canvas/utils/fabricHelpers";
 import { roundToDecimal } from "@/components/canvas/utils/geometry";
@@ -26,8 +25,7 @@ import type { ShapeFabricRefs } from "@/lib/types";
 
 export interface UseShapesReturn {
   addShape: (name: string, widthM: number, heightM: number) => void;
-  updateShapeLabels: (rect: Rect) => void;
-  updateShapeDimensions: (rect: Rect, finalize: boolean) => void;
+  updateShapeDimensions: (rect: MeasuredRect, finalize: boolean) => void;
   loadShape: (data: {
     left: number;
     top: number;
@@ -64,7 +62,7 @@ export function useShapes(
       const centerY = canvas.getHeight() / 2;
       const color = store.selectedColor;
 
-      const rect = createShapeRect({
+      const rect = createMeasuredRect({
         left: centerX - widthPx / 2,
         top: centerY - heightPx / 2,
         width: widthPx,
@@ -79,24 +77,10 @@ export function useShapes(
         baseHeightPx: heightPx,
       });
 
-      const label = createShapeLabel({
-        text: name,
-        left: centerX,
-        top: centerY - 8,
-        parentId: id,
-      });
-
-      const dims = createShapeDims({
-        text: `${widthM}m \u00d7 ${heightM}m`,
-        left: centerX,
-        top: centerY + 10,
-        parentId: id,
-      });
-
-      canvas.add(rect, label, dims);
+      canvas.add(rect);
       canvas.setActiveObject(rect);
 
-      fabricRefsRef.current.set(id, { type: "shape", rect, label, dims });
+      fabricRefsRef.current.set(id, { type: "shape", rect });
 
       // Compute world coordinates if camera is available
       const camera = store.camera;
@@ -121,22 +105,8 @@ export function useShapes(
     [fabricCanvasRef, fabricRefsRef],
   );
 
-  const updateShapeLabels = useCallback(
-    (rect: Rect) => {
-      const id = getFabricProp(rect, "objectId");
-      if (id == null) return;
-      const refs = fabricRefsRef.current.get(id);
-      if (!refs || refs.type !== "shape") return;
-
-      const center = rect.getCenterPoint();
-      refs.label.set({ left: center.x, top: center.y - 8, angle: rect.angle });
-      refs.dims.set({ left: center.x, top: center.y + 10, angle: rect.angle });
-    },
-    [fabricRefsRef],
-  );
-
   const updateShapeDimensions = useCallback(
-    (rect: Rect, finalize: boolean) => {
+    (rect: MeasuredRect, finalize: boolean) => {
       const store = usePlannerStore.getState();
       if (!store.pixelsPerMeter) return;
 
@@ -155,15 +125,13 @@ export function useShapes(
         1,
       );
 
+      // Update the self-rendering label directly on the MeasuredRect
+      rect.updateDimensions(newWidthM, newHeightM);
+
       const id = getFabricProp(rect, "objectId");
       if (id == null) return;
-      const refs = fabricRefsRef.current.get(id);
-      if (refs && "dims" in refs) {
-        refs.dims.set("text", `${newWidthM}m \u00d7 ${newHeightM}m`);
-      }
 
       if (finalize) {
-        // Compute world position from Fabric rect center
         const camera = store.camera;
         const center = rect.getCenterPoint();
         const worldCoords = camera
@@ -184,7 +152,7 @@ export function useShapes(
         }>);
       }
     },
-    [fabricRefsRef],
+    [],
   );
 
   const loadShape = useCallback(
@@ -219,7 +187,7 @@ export function useShapes(
 
       if (data.worldX != null && data.worldY != null && camera) {
         const canvasRect = worldRectToCanvas(
-          data.worldX - data.widthM / 2, // world center → world top-left
+          data.worldX - data.widthM / 2,
           data.worldY - data.heightM / 2,
           data.widthM,
           data.heightM,
@@ -233,7 +201,7 @@ export function useShapes(
 
       const id = store.nextObjectId();
 
-      const rect = createShapeRect({
+      const rect = createMeasuredRect({
         left,
         top,
         width: widthPx,
@@ -251,26 +219,8 @@ export function useShapes(
         baseHeightPx: data.baseHeightPx ?? heightPx,
       });
 
-      const center = rect.getCenterPoint();
-
-      const label = createShapeLabel({
-        text: data.name,
-        left: center.x,
-        top: center.y - 8,
-        angle: data.angle,
-        parentId: id,
-      });
-
-      const dims = createShapeDims({
-        text: `${data.widthM}m \u00d7 ${data.heightM}m`,
-        left: center.x,
-        top: center.y + 10,
-        angle: data.angle,
-        parentId: id,
-      });
-
-      canvas.add(rect, label, dims);
-      fabricRefsRef.current.set(id, { type: "shape", rect, label, dims });
+      canvas.add(rect);
+      fabricRefsRef.current.set(id, { type: "shape", rect });
 
       store.addObject({
         id,
@@ -289,5 +239,5 @@ export function useShapes(
     [fabricCanvasRef, fabricRefsRef],
   );
 
-  return { addShape, updateShapeLabels, updateShapeDimensions, loadShape };
+  return { addShape, updateShapeDimensions, loadShape };
 }

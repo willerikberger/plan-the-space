@@ -8,7 +8,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Canvas, TPointerEventInfo, Rect, Line } from "fabric";
+import type { Canvas, TPointerEventInfo, Rect } from "fabric";
+import type { MeasuredRect } from "@/components/canvas/fabricClasses/MeasuredRect";
 import { usePlannerStore } from "@/lib/store";
 import { getFabricProp } from "@/components/canvas/utils/fabricHelpers";
 import type { Point } from "@/lib/types";
@@ -25,7 +26,6 @@ export interface LineHandlers {
   updateDrawingLine: (pointer: Point) => void;
   finishDrawingLine: () => void;
   lineStartRef: React.RefObject<Point | null>;
-  updateLineLabel: (line: Line) => void;
 }
 
 export interface MaskHandlers {
@@ -35,8 +35,7 @@ export interface MaskHandlers {
 }
 
 export interface ShapeHandlers {
-  updateShapeLabels: (rect: Rect) => void;
-  updateShapeDimensions: (rect: Rect, finalize: boolean) => void;
+  updateShapeDimensions: (rect: MeasuredRect, finalize: boolean) => void;
 }
 
 export interface PanHandlers {
@@ -148,11 +147,7 @@ export function useCanvasEvents(
       if (!obj) return;
       const objectType = getFabricProp(obj as Rect, "objectType");
       if (objectType === "shape") {
-        h.updateShapeDimensions(obj as Rect, true);
-        h.updateShapeLabels(obj as Rect);
-      }
-      if (objectType === "line") {
-        h.updateLineLabel(obj as Line);
+        h.updateShapeDimensions(obj as unknown as MeasuredRect, true);
       }
       h.triggerAutoSave();
     };
@@ -163,31 +158,7 @@ export function useCanvasEvents(
       if (!obj) return;
       const objectType = getFabricProp(obj as Rect, "objectType");
       if (objectType === "shape") {
-        h.updateShapeDimensions(obj as Rect, false);
-        h.updateShapeLabels(obj as Rect);
-      }
-    };
-
-    const onObjectMoving = (opt: { target: unknown }) => {
-      const h = handlersRef.current;
-      const obj = opt.target;
-      if (!obj) return;
-      const objectType = getFabricProp(obj as Rect, "objectType");
-      if (objectType === "shape") {
-        h.updateShapeLabels(obj as Rect);
-      }
-      if (objectType === "line") {
-        h.updateLineLabel(obj as Line);
-      }
-    };
-
-    const onObjectRotating = (opt: { target: unknown }) => {
-      const h = handlersRef.current;
-      const obj = opt.target;
-      if (!obj) return;
-      const objectType = getFabricProp(obj as Rect, "objectType");
-      if (objectType === "shape") {
-        h.updateShapeLabels(obj as Rect);
+        h.updateShapeDimensions(obj as unknown as MeasuredRect, false);
       }
     };
 
@@ -196,8 +167,6 @@ export function useCanvasEvents(
     canvas.on("mouse:up", onMouseUp as never);
     canvas.on("object:modified", onObjectModified as never);
     canvas.on("object:scaling", onObjectScaling as never);
-    canvas.on("object:moving", onObjectMoving as never);
-    canvas.on("object:rotating", onObjectRotating as never);
 
     return () => {
       canvas.off("mouse:down", onMouseDown as never);
@@ -205,8 +174,6 @@ export function useCanvasEvents(
       canvas.off("mouse:up", onMouseUp as never);
       canvas.off("object:modified", onObjectModified as never);
       canvas.off("object:scaling", onObjectScaling as never);
-      canvas.off("object:moving", onObjectMoving as never);
-      canvas.off("object:rotating", onObjectRotating as never);
     };
     // Register once when the canvas is available — handlersRef keeps callbacks fresh
   }, [fabricCanvasRef]);

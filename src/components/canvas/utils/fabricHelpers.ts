@@ -2,14 +2,16 @@
  * @module fabricHelpers
  * @description Factory functions for creating Fabric.js objects (shapes, labels, calibration lines, masks)
  * and typed accessors for reading/writing custom properties on Fabric objects.
- * @dependencies fabric (Rect, FabricText, Line, Circle), constants (DEFAULTS, THEME), types (FabricCustomProps)
+ * @dependencies fabric (Rect, Line, Circle), constants (THEME), types (FabricCustomProps)
  * @usage Consumed by useShapes, useLines, useCalibration, useCleanup, useImages, useCanvasEvents, and canvasOrchestration.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- Factory functions pass custom props to Fabric constructors which don't type them */
-import { Rect, FabricText, Line, Circle } from "fabric";
+import { Rect, Line, Circle } from "fabric";
 import type { FabricObject } from "fabric";
-import { DEFAULTS, THEME } from "@/lib/constants";
+import { THEME } from "@/lib/constants";
 import type { FabricCustomProps } from "@/lib/types";
+import { MeasuredRect } from "@/components/canvas/fabricClasses/MeasuredRect";
+import { MeasuredLine } from "@/components/canvas/fabricClasses/MeasuredLine";
 
 // ============================================
 // Typed Fabric custom property accessors
@@ -38,10 +40,10 @@ export function setFabricProps(
 }
 
 // ============================================
-// Shape factories
+// Shape & line factories (self-labeling via MeasuredRect / MeasuredLine)
 // ============================================
 
-export function createShapeRect(options: {
+export function createMeasuredRect(options: {
   left: number;
   top: number;
   width: number;
@@ -57,8 +59,8 @@ export function createShapeRect(options: {
   shapeHeightM: number;
   baseWidthPx: number;
   baseHeightPx: number;
-}): Rect {
-  return new Rect({
+}): MeasuredRect {
+  return new MeasuredRect({
     left: options.left,
     top: options.top,
     width: options.width,
@@ -71,7 +73,7 @@ export function createShapeRect(options: {
     scaleX: options.scaleX ?? 1,
     scaleY: options.scaleY ?? 1,
     angle: options.angle ?? 0,
-    // Custom properties stored on the Fabric object
+    // Custom properties
     objectId: options.objectId,
     objectType: "shape",
     shapeName: options.shapeName,
@@ -80,52 +82,56 @@ export function createShapeRect(options: {
     shapeColor: options.fill,
     baseWidthPx: options.baseWidthPx,
     baseHeightPx: options.baseHeightPx,
+    // MeasuredRect-specific
+    label: options.shapeName,
+    widthM: options.shapeWidthM,
+    heightM: options.shapeHeightM,
   } as any);
 }
 
-export function createShapeLabel(options: {
-  text: string;
-  left: number;
-  top: number;
+export function createMeasuredLine(options: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  stroke: string;
+  strokeWidth: number;
+  label: string;
+  lengthM: number;
+  objectId?: number;
+  lineName?: string;
+  lineColor?: string;
+  selectable?: boolean;
+  evented?: boolean;
+  scaleX?: number;
+  scaleY?: number;
   angle?: number;
-  parentId: number;
-}): FabricText {
-  return new FabricText(options.text, {
+  left?: number;
+  top?: number;
+}): MeasuredLine {
+  return new MeasuredLine([options.x1, options.y1, options.x2, options.y2], {
     left: options.left,
     top: options.top,
-    fontSize: DEFAULTS.labelFontSize,
-    fill: "white",
-    fontFamily: "Arial",
-    originX: "center",
-    originY: "center",
+    stroke: options.stroke,
+    strokeWidth: options.strokeWidth,
+    strokeLineCap: "round",
+    selectable: options.selectable ?? false,
+    evented: options.evented ?? false,
+    scaleX: options.scaleX ?? 1,
+    scaleY: options.scaleY ?? 1,
     angle: options.angle ?? 0,
-    selectable: false,
-    evented: false,
-    objectType: "shapeLabel",
-    parentId: options.parentId,
-  } as any);
-}
-
-export function createShapeDims(options: {
-  text: string;
-  left: number;
-  top: number;
-  angle?: number;
-  parentId: number;
-}): FabricText {
-  return new FabricText(options.text, {
-    left: options.left,
-    top: options.top,
-    fontSize: DEFAULTS.dimsFontSize,
-    fill: "rgba(255,255,255,0.7)",
-    fontFamily: "Arial",
-    originX: "center",
-    originY: "center",
-    angle: options.angle ?? 0,
-    selectable: false,
-    evented: false,
-    objectType: "shapeDims",
-    parentId: options.parentId,
+    // Custom properties
+    ...(options.objectId != null && {
+      objectId: options.objectId,
+      objectType: "line",
+      lineName: options.lineName,
+      lineColor: options.lineColor,
+      lengthM: options.lengthM,
+    }),
+    // MeasuredLine-specific
+    label: options.label,
+    lengthM: options.lengthM,
+    labelColor: options.stroke,
   } as any);
 }
 
@@ -157,52 +163,6 @@ export function createCalibrationEndpoint(x: number, y: number): Circle {
     selectable: false,
     evented: false,
   });
-}
-
-// ============================================
-// Line factories
-// ============================================
-
-export function createDrawingLine(options: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  stroke: string;
-  strokeWidth: number;
-}): Line {
-  return new Line([options.x1, options.y1, options.x2, options.y2], {
-    stroke: options.stroke,
-    strokeWidth: options.strokeWidth,
-    selectable: false,
-    evented: false,
-    strokeLineCap: "round",
-  });
-}
-
-export function createLineLabel(options: {
-  text: string;
-  left: number;
-  top: number;
-  fill: string;
-  parentId?: number;
-}): FabricText {
-  return new FabricText(options.text, {
-    left: options.left,
-    top: options.top,
-    fontSize: DEFAULTS.lineLabelFontSize,
-    fill: options.fill,
-    fontFamily: "Arial",
-    fontWeight: "bold",
-    originX: "center",
-    originY: "center",
-    selectable: false,
-    evented: false,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    padding: 5,
-    objectType: "lineLabel",
-    ...(options.parentId != null && { parentId: options.parentId }),
-  } as any);
 }
 
 // ============================================

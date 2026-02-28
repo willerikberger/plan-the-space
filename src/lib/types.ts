@@ -1,4 +1,4 @@
-import type { Rect, FabricText, Line, FabricImage, Circle } from "fabric";
+import type { Rect, Line, FabricImage, Circle } from "fabric";
 
 // ============================================
 // Mode
@@ -106,14 +106,11 @@ export type PlannerObject =
 export interface ShapeFabricRefs {
   type: "shape";
   rect: Rect;
-  label: FabricText;
-  dims: FabricText;
 }
 
 export interface LineFabricRefs {
   type: "line";
   line: Line;
-  label: FabricText;
 }
 
 export interface MaskFabricRefs {

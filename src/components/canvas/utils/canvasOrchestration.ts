@@ -124,17 +124,15 @@ export function clearCanvas(
   allFabricRefsRef: React.RefObject<Map<number, AnyFabricRefs>>,
   backgroundRef: React.MutableRefObject<FabricImage | null>,
 ): void {
-  // Remove all tracked objects from canvas
+  // Remove all tracked objects from canvas (one Fabric object per refs entry)
   for (const [, refs] of allFabricRefsRef.current) {
     switch (refs.type) {
       case "shape":
-        fabricCanvas.remove(refs.rect, refs.label, refs.dims);
-        break;
-      case "line":
-        fabricCanvas.remove(refs.line, refs.label);
-        break;
       case "mask":
         fabricCanvas.remove(refs.rect);
+        break;
+      case "line":
+        fabricCanvas.remove(refs.line);
         break;
       case "image":
         fabricCanvas.remove(refs.image);
@@ -175,16 +173,11 @@ export function reorderObjects(
 
     switch (refs.type) {
       case "shape":
+      case "mask":
         fabricCanvas.moveObjectTo(refs.rect, idx++);
-        fabricCanvas.moveObjectTo(refs.label, idx++);
-        fabricCanvas.moveObjectTo(refs.dims, idx++);
         break;
       case "line":
         fabricCanvas.moveObjectTo(refs.line, idx++);
-        fabricCanvas.moveObjectTo(refs.label, idx++);
-        break;
-      case "mask":
-        fabricCanvas.moveObjectTo(refs.rect, idx++);
         break;
       case "image":
         fabricCanvas.moveObjectTo(refs.image, idx++);
@@ -206,13 +199,11 @@ export function deleteObject(
   if (refs) {
     switch (refs.type) {
       case "shape":
-        fabricCanvas.remove(refs.rect, refs.label, refs.dims);
-        break;
-      case "line":
-        fabricCanvas.remove(refs.line, refs.label);
-        break;
       case "mask":
         fabricCanvas.remove(refs.rect);
+        break;
+      case "line":
+        fabricCanvas.remove(refs.line);
         break;
       case "image":
         fabricCanvas.remove(refs.image);
