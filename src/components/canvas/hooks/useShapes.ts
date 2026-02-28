@@ -18,6 +18,10 @@ import {
   getFabricProp,
 } from "@/components/canvas/utils/fabricHelpers";
 import { roundToDecimal } from "@/components/canvas/utils/geometry";
+import {
+  canvasToWorld,
+  worldRectToCanvas,
+} from "@/components/canvas/utils/coordinates";
 import type { ShapeFabricRefs } from "@/lib/types";
 
 export interface UseShapesReturn {
@@ -38,6 +42,8 @@ export interface UseShapesReturn {
     baseWidthPx?: number;
     baseHeightPx?: number;
     name: string;
+    worldX?: number;
+    worldY?: number;
   }) => void;
 }
 
@@ -92,6 +98,12 @@ export function useShapes(
 
       fabricRefsRef.current.set(id, { type: "shape", rect, label, dims });
 
+      // Compute world coordinates if camera is available
+      const camera = store.camera;
+      const worldCoords = camera
+        ? canvasToWorld(centerX, centerY, camera)
+        : undefined;
+
       store.addObject({
         id,
         type: "shape",
@@ -99,6 +111,9 @@ export function useShapes(
         widthM,
         heightM,
         color,
+        ...(worldCoords
+          ? { worldX: worldCoords.x, worldY: worldCoords.y }
+          : {}),
       });
 
       store.setStatusMessage(`Added "${name}" (${widthM}m \u00d7 ${heightM}m)`);
@@ -148,10 +163,25 @@ export function useShapes(
       }
 
       if (finalize) {
+        // Compute world position from Fabric rect center
+        const camera = store.camera;
+        const center = rect.getCenterPoint();
+        const worldCoords = camera
+          ? canvasToWorld(center.x, center.y, camera)
+          : undefined;
+
         store.updateObject(id, {
           widthM: newWidthM,
           heightM: newHeightM,
-        } as Partial<{ widthM: number; heightM: number }>);
+          ...(worldCoords
+            ? { worldX: worldCoords.x, worldY: worldCoords.y }
+            : {}),
+        } as Partial<{
+          widthM: number;
+          heightM: number;
+          worldX: number;
+          worldY: number;
+        }>);
       }
     },
     [fabricRefsRef],
@@ -172,18 +202,40 @@ export function useShapes(
       baseWidthPx?: number;
       baseHeightPx?: number;
       name: string;
+      worldX?: number;
+      worldY?: number;
     }) => {
       const canvas = fabricCanvasRef.current;
       const store = usePlannerStore.getState();
       if (!canvas || !store.pixelsPerMeter) return;
 
-      const widthPx = data.width ?? data.widthM * store.pixelsPerMeter;
-      const heightPx = data.height ?? data.heightM * store.pixelsPerMeter;
+      const camera = store.camera;
+
+      // If world coords available and camera exists, compute pixel position from world space
+      let left = data.left;
+      let top = data.top;
+      let widthPx = data.width ?? data.widthM * store.pixelsPerMeter;
+      let heightPx = data.height ?? data.heightM * store.pixelsPerMeter;
+
+      if (data.worldX != null && data.worldY != null && camera) {
+        const canvasRect = worldRectToCanvas(
+          data.worldX - data.widthM / 2, // world center → world top-left
+          data.worldY - data.heightM / 2,
+          data.widthM,
+          data.heightM,
+          camera,
+        );
+        left = canvasRect.left;
+        top = canvasRect.top;
+        widthPx = canvasRect.width;
+        heightPx = canvasRect.height;
+      }
+
       const id = store.nextObjectId();
 
       const rect = createShapeRect({
-        left: data.left,
-        top: data.top,
+        left,
+        top,
         width: widthPx,
         height: heightPx,
         fill: data.color,
@@ -227,6 +279,11 @@ export function useShapes(
         widthM: data.widthM,
         heightM: data.heightM,
         color: data.color,
+        ...(data.worldX != null ? { worldX: data.worldX } : {}),
+        ...(data.worldY != null ? { worldY: data.worldY } : {}),
+        ...(data.angle != null && data.angle !== 0
+          ? { angle: data.angle }
+          : {}),
       });
     },
     [fabricCanvasRef, fabricRefsRef],

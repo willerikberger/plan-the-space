@@ -23,6 +23,10 @@ import {
   roundToDecimal,
   midpoint,
 } from "@/components/canvas/utils/geometry";
+import {
+  canvasToWorld,
+  worldToCanvas,
+} from "@/components/canvas/utils/coordinates";
 import { MIN_LINE_LENGTH_PX } from "@/lib/constants";
 import type { Point, LineFabricRefs } from "@/lib/types";
 
@@ -48,6 +52,10 @@ export interface UseLinesReturn {
     scaleY?: number;
     angle?: number;
     name: string;
+    worldX1?: number;
+    worldY1?: number;
+    worldX2?: number;
+    worldY2?: number;
   }) => void;
 }
 
@@ -216,12 +224,24 @@ export function useLines(
 
     fabricRefsRef.current.set(id, { type: "line", line, label });
 
+    // Compute world coordinates if camera is available
+    const camera = store.camera;
+    const worldCoords = camera
+      ? {
+          worldX1: canvasToWorld(x1, y1, camera).x,
+          worldY1: canvasToWorld(x1, y1, camera).y,
+          worldX2: canvasToWorld(x2, y2, camera).x,
+          worldY2: canvasToWorld(x2, y2, camera).y,
+        }
+      : {};
+
     store.addObject({
       id,
       type: "line",
       name: lineName,
       lengthM: meterLen,
       color: lineColor,
+      ...worldCoords,
     });
 
     currentLineRef.current = null;
@@ -266,15 +286,46 @@ export function useLines(
       angle?: number;
       name: string;
       lengthM: number;
+      worldX1?: number;
+      worldY1?: number;
+      worldX2?: number;
+      worldY2?: number;
     }) => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       const store = usePlannerStore.getState();
+      const camera = store.camera;
       const id = store.nextObjectId();
 
-      const line = new FabricLine([data.x1, data.y1, data.x2, data.y2], {
-        left: data.left,
-        top: data.top,
+      // If world coords available and camera exists, compute pixel positions
+      let lineX1 = data.x1;
+      let lineY1 = data.y1;
+      let lineX2 = data.x2;
+      let lineY2 = data.y2;
+      let lineLeft = data.left;
+      let lineTop = data.top;
+
+      if (
+        data.worldX1 != null &&
+        data.worldY1 != null &&
+        data.worldX2 != null &&
+        data.worldY2 != null &&
+        camera
+      ) {
+        const p1 = worldToCanvas({ x: data.worldX1, y: data.worldY1 }, camera);
+        const p2 = worldToCanvas({ x: data.worldX2, y: data.worldY2 }, camera);
+        // Fabric lines: x1/y1/x2/y2 are relative to left/top
+        lineLeft = Math.min(p1.x, p2.x);
+        lineTop = Math.min(p1.y, p2.y);
+        lineX1 = p1.x - lineLeft;
+        lineY1 = p1.y - lineTop;
+        lineX2 = p2.x - lineLeft;
+        lineY2 = p2.y - lineTop;
+      }
+
+      const line = new FabricLine([lineX1, lineY1, lineX2, lineY2], {
+        left: lineLeft,
+        top: lineTop,
         stroke: data.color,
         strokeWidth: data.strokeWidth ?? 3,
         strokeLineCap: "round",
@@ -289,11 +340,11 @@ export function useLines(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
-      const x1 = data.x1 + data.left;
-      const y1 = data.y1 + data.top;
-      const x2 = data.x2 + data.left;
-      const y2 = data.y2 + data.top;
-      const mid = midpoint({ x: x1, y: y1 }, { x: x2, y: y2 });
+      const absX1 = lineX1 + lineLeft;
+      const absY1 = lineY1 + lineTop;
+      const absX2 = lineX2 + lineLeft;
+      const absY2 = lineY2 + lineTop;
+      const mid = midpoint({ x: absX1, y: absY1 }, { x: absX2, y: absY2 });
 
       const label = createLineLabel({
         text: `${data.lengthM}m`,
@@ -312,6 +363,10 @@ export function useLines(
         name: data.name,
         lengthM: data.lengthM,
         color: data.color,
+        ...(data.worldX1 != null ? { worldX1: data.worldX1 } : {}),
+        ...(data.worldY1 != null ? { worldY1: data.worldY1 } : {}),
+        ...(data.worldX2 != null ? { worldX2: data.worldX2 } : {}),
+        ...(data.worldY2 != null ? { worldY2: data.worldY2 } : {}),
       });
     },
     [fabricCanvasRef, fabricRefsRef],
