@@ -17,7 +17,7 @@ import type {
   ShapeObject,
   LineObject,
   HistorySnapshot,
-  SerializedProjectV3,
+  SerializedProjectV4,
 } from "@/lib/types";
 
 // ============================================
@@ -348,11 +348,11 @@ describe("Full user workflow integration", () => {
     );
 
     // Verify serialized structure
-    expect(serialized.version).toBe(3);
+    expect(serialized.version).toBe(4);
     expect(serialized.pixelsPerMeter).toBe(100);
     expect(serialized.backgroundImage).toBe("data:image/png;base64,floorplan");
     expect(serialized.objects).toHaveLength(3);
-    expect((serialized as SerializedProjectV3).metadata?.exportedFrom).toBe(
+    expect((serialized as SerializedProjectV4).metadata?.exportedFrom).toBe(
       "plan-the-space",
     );
 
@@ -429,10 +429,10 @@ describe("Full user workflow integration", () => {
     // ------------------------------------------------------------------
     await saveProject(serialized);
 
-    // Load from IDB — should come back migrated to v3
+    // Load from IDB — should come back migrated to v4
     const loadedFromIDB = await loadProject();
     expect(loadedFromIDB).not.toBeNull();
-    expect(loadedFromIDB!.version).toBe(3);
+    expect(loadedFromIDB!.version).toBe(4);
     expect(loadedFromIDB!.pixelsPerMeter).toBe(100);
     expect(loadedFromIDB!.backgroundImage).toBe(
       "data:image/png;base64,floorplan",

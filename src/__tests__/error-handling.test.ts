@@ -226,7 +226,7 @@ describe("validateProjectData with malformed input", () => {
 describe("deserializeProject with edge cases", () => {
   it("skips objects with unknown type gracefully", () => {
     const project: SerializedProject = {
-      version: 3,
+      version: 4,
       pixelsPerMeter: 50,
       backgroundImage: null,
       savedAt: "2024-01-01",
@@ -285,7 +285,7 @@ describe("deserializeProject with edge cases", () => {
 
   it("preserves all object types in a mixed project", () => {
     const project: SerializedProject = {
-      version: 3,
+      version: 4,
       pixelsPerMeter: 50,
       backgroundImage: "data:test",
       savedAt: "2024-01-01",
@@ -418,7 +418,7 @@ describe("serializeProject with edge cases", () => {
 
   it("serializes project with empty objects array", () => {
     const project = serializeProject(null, null, [], () => null);
-    expect(project.version).toBe(3);
+    expect(project.version).toBe(4);
     expect(project.objects).toHaveLength(0);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
@@ -434,9 +434,9 @@ describe("migrateProject edge cases", () => {
       savedAt: "2024-01-01",
       objects: [],
     };
-    const v3 = migrateProject(v2);
-    expect(v3.version).toBe(3);
-    expect(v3.metadata?.exportedFrom).toBe("plan-the-space");
+    const v4 = migrateProject(v2);
+    expect(v4.version).toBe(4);
+    expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
   });
 
   it("handles version 1 data by treating as pre-v3", () => {
@@ -447,9 +447,9 @@ describe("migrateProject edge cases", () => {
       savedAt: "2023-01-01",
       objects: [],
     } as SerializedProject;
-    const v3 = migrateProject(v1Data);
-    expect(v3.version).toBe(3);
-    expect(v3.metadata?.exportedFrom).toBe("plan-the-space");
+    const v4 = migrateProject(v1Data);
+    expect(v4.version).toBe(4);
+    expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
   });
 });
 
@@ -508,7 +508,7 @@ describe("importProjectFromFile error handling", () => {
       type: "application/json",
     });
     const result = await importProjectFromFile(file);
-    expect(result.version).toBe(3);
+    expect(result.version).toBe(4);
     expect(result.pixelsPerMeter).toBe(50);
   });
 });
@@ -778,7 +778,7 @@ describe("IndexedDB error edge cases", () => {
     expect(result).toBeNull();
   });
 
-  it("saveProject then loadProject round-trips with v3 migration", async () => {
+  it("saveProject then loadProject round-trips with v4 migration", async () => {
     const project: SerializedProject = {
       version: 2,
       pixelsPerMeter: 75,
@@ -789,7 +789,7 @@ describe("IndexedDB error edge cases", () => {
     await saveProject(project);
     const loaded = await loadProject();
     expect(loaded).not.toBeNull();
-    expect(loaded!.version).toBe(3);
+    expect(loaded!.version).toBe(4);
     expect(loaded!.pixelsPerMeter).toBe(75);
   });
 

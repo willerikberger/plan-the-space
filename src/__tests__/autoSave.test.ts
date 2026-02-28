@@ -20,7 +20,7 @@ function makeTimerRef(): { current: ReturnType<typeof setTimeout> | null } {
 /** Creates a mock serialized project. */
 function makeMockProject(): SerializedProject {
   return {
-    version: 3,
+    version: 4,
     pixelsPerMeter: 50,
     backgroundImage: null,
     savedAt: new Date().toISOString(),
@@ -240,16 +240,14 @@ describe("handleBeforeUnload", () => {
   });
 
   it("does not throw when saveToIDB rejects", () => {
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 0,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 0,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
 
     const getFabricState = vi.fn().mockReturnValue(null);
     const serializeProject = vi.fn().mockReturnValue(makeMockProject());
@@ -262,16 +260,14 @@ describe("handleBeforeUnload", () => {
   });
 
   it("passes getFabricState through to serializeProject", () => {
-    usePlannerStore
-      .getState()
-      .addObject({
-        id: 0,
-        type: "shape",
-        name: "S",
-        widthM: 1,
-        heightM: 1,
-        color: "r",
-      });
+    usePlannerStore.getState().addObject({
+      id: 0,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
 
     const getFabricState = vi
       .fn()

@@ -12,6 +12,7 @@ import type {
   MaskObject,
   SerializedProject,
   SerializedProjectV3,
+  SerializedProjectV4,
 } from "@/lib/types";
 
 describe("validateProjectData", () => {
@@ -190,10 +191,10 @@ describe("round-trip serialize -> deserialize", () => {
       },
     );
 
-    expect(project.version).toBe(3);
+    expect(project.version).toBe(4);
     expect(project.pixelsPerMeter).toBe(50);
     expect(project.objects).toHaveLength(2);
-    expect((project as SerializedProjectV3).metadata?.exportedFrom).toBe(
+    expect((project as SerializedProjectV4).metadata?.exportedFrom).toBe(
       "plan-the-space",
     );
 
@@ -270,7 +271,7 @@ describe("backward compatibility (v2 format from vanilla app)", () => {
 });
 
 describe("migrateProject", () => {
-  it("migrates v2 to v3 with metadata", () => {
+  it("migrates v2 to v4 with metadata", () => {
     const v2Data: SerializedProject = {
       version: 2,
       pixelsPerMeter: 50,
@@ -278,14 +279,14 @@ describe("migrateProject", () => {
       savedAt: "2024-01-01",
       objects: [],
     };
-    const v3 = migrateProject(v2Data);
-    expect(v3.version).toBe(3);
-    expect(v3.metadata?.exportedFrom).toBe("plan-the-space");
-    expect(v3.pixelsPerMeter).toBe(50);
-    expect(v3.objects).toEqual([]);
+    const v4 = migrateProject(v2Data);
+    expect(v4.version).toBe(4);
+    expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
+    expect(v4.pixelsPerMeter).toBe(50);
+    expect(v4.objects).toEqual([]);
   });
 
-  it("passes through v3 data unchanged", () => {
+  it("migrates v3 to v4", () => {
     const v3Data: SerializedProjectV3 = {
       version: 3,
       pixelsPerMeter: 75,
@@ -295,7 +296,9 @@ describe("migrateProject", () => {
       metadata: { appVersion: "1.0.0", exportedFrom: "plan-the-space" },
     };
     const result = migrateProject(v3Data);
-    expect(result).toEqual(v3Data);
+    expect(result.version).toBe(4);
+    expect(result.metadata?.exportedFrom).toBe("plan-the-space");
+    expect(result.pixelsPerMeter).toBe(75);
   });
 
   it("preserves IDB id during migration", () => {
@@ -307,7 +310,7 @@ describe("migrateProject", () => {
       objects: [],
       id: "plan-the-space-project",
     };
-    const v3 = migrateProject(v2Data);
-    expect(v3.id).toBe("plan-the-space-project");
+    const v4 = migrateProject(v2Data);
+    expect(v4.id).toBe("plan-the-space-project");
   });
 });

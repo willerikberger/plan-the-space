@@ -322,7 +322,7 @@ describe("serializeProject (extended)", () => {
   it("serializes with null pixelsPerMeter and null backgroundImage", () => {
     const project = serializeProject(null, null, [], () => null);
 
-    expect(project.version).toBe(3);
+    expect(project.version).toBe(4);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
     expect(project.objects).toHaveLength(0);
@@ -641,12 +641,12 @@ describe("migrateProject (extended)", () => {
       id: "my-project-key",
     };
 
-    const v3 = migrateProject(v2WithId);
-    expect(v3.version).toBe(3);
-    expect(v3.id).toBe("my-project-key");
-    expect(v3.objects).toHaveLength(1);
-    expect(v3.backgroundImage).toBe("data:test");
-    expect(v3.metadata?.exportedFrom).toBe("plan-the-space");
+    const v4 = migrateProject(v2WithId);
+    expect(v4.version).toBe(4);
+    expect(v4.id).toBe("my-project-key");
+    expect(v4.objects).toHaveLength(1);
+    expect(v4.backgroundImage).toBe("data:test");
+    expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
   });
 
   it("does not add id when not present in v2 data", () => {
@@ -658,9 +658,9 @@ describe("migrateProject (extended)", () => {
       objects: [],
     };
 
-    const v3 = migrateProject(v2NoId);
-    expect(v3.version).toBe(3);
-    expect(v3.id).toBeUndefined();
+    const v4 = migrateProject(v2NoId);
+    expect(v4.version).toBe(4);
+    expect(v4.id).toBeUndefined();
   });
 
   it("preserves savedAt and pixelsPerMeter during migration", () => {
@@ -672,8 +672,8 @@ describe("migrateProject (extended)", () => {
       objects: [],
     };
 
-    const v3 = migrateProject(v2);
-    expect(v3.savedAt).toBe("2024-12-25T00:00:00.000Z");
-    expect(v3.pixelsPerMeter).toBe(123.5);
+    const v4 = migrateProject(v2);
+    expect(v4.savedAt).toBe("2024-12-25T00:00:00.000Z");
+    expect(v4.pixelsPerMeter).toBe(123.5);
   });
 });

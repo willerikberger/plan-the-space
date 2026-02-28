@@ -272,6 +272,47 @@ export interface SerializedProjectV3 extends SerializedProjectBase {
   metadata?: { appVersion?: string; exportedFrom?: string };
 }
 
+// V4 serialized objects: extend v3 types with optional world-space coords
+export interface SerializedShapeV4 extends SerializedShape {
+  worldX?: number; // center X in meters
+  worldY?: number; // center Y in meters
+}
+
+export interface SerializedLineV4 extends SerializedLine {
+  worldX1?: number; // start X in meters
+  worldY1?: number; // start Y in meters
+  worldX2?: number; // end X in meters
+  worldY2?: number; // end Y in meters
+}
+
+export interface SerializedMaskV4 extends SerializedMask {
+  worldX?: number; // top-left X in meters
+  worldY?: number; // top-left Y in meters
+  widthM?: number; // width in meters
+  heightM?: number; // height in meters
+}
+
+export type SerializedObjectV4 =
+  | SerializedShapeV4
+  | SerializedLineV4
+  | SerializedMaskV4
+  | SerializedImage;
+
+export interface SerializedCamera {
+  pixelsPerMeter: number;
+  zoom: number;
+  panX: number;
+  panY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+export interface SerializedProjectV4 extends SerializedProjectBase {
+  version: 4;
+  camera?: SerializedCamera;
+  metadata?: { appVersion?: string; exportedFrom?: string };
+}
+
 // Union keeps backward compat — v2 has no metadata field
 export type SerializedProject = SerializedProjectBase;
 
