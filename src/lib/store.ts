@@ -12,6 +12,7 @@ import type {
   LayerSlice,
   LayerGroup,
   LayerEntry,
+  LayerVisibility,
   Camera,
 } from "./types";
 import { canTransitionMode, layerGroupForType } from "./types";
@@ -202,8 +203,15 @@ const emptyLayers: Record<LayerGroup, LayerEntry[]> = {
   content: [],
 };
 
+const allVisible: LayerVisibility = {
+  background: true,
+  masks: true,
+  content: true,
+};
+
 const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
   layers: { ...emptyLayers, background: [], masks: [], content: [] },
+  layerVisibility: { ...allVisible },
 
   addToLayer: (objectId, group) =>
     set((state) => {
@@ -283,6 +291,11 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
     set({
       layers: { background: [], masks: [], content: [] },
     }),
+
+  setLayerVisibility: (visibility) =>
+    set((state) => ({
+      layerVisibility: { ...state.layerVisibility, ...visibility },
+    })),
 });
 
 // ============================================
@@ -320,6 +333,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
       ...initialUIState,
       historyState: initialHistoryState,
       layers: { background: [], masks: [], content: [] },
+      layerVisibility: { ...allVisible },
       objects: new Map(),
     });
   },

@@ -6,6 +6,7 @@ import {
   deleteObject,
   reorderObjects,
   loadProjectFromData,
+  applyLayerVisibility,
 } from "@/components/canvas/utils/canvasOrchestration";
 import type {
   ShapeFabricRefs,
@@ -627,6 +628,122 @@ describe("loadProjectFromData", () => {
     await loadProjectFromData([], canvas, refsRef, hooks);
 
     // renderAll is called by both reorderObjects and loadProjectFromData itself
+    expect(canvas.renderAll).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyLayerVisibility
+// ---------------------------------------------------------------------------
+describe("applyLayerVisibility", () => {
+  it("hides content layer objects when content visibility is false", () => {
+    const canvas = mockCanvas();
+    const shapeRefs = mockShapeRefs();
+    (shapeRefs.rect as any).set = vi.fn();
+    const refsRef = makeRefsRef([[1, shapeRefs]]);
+
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
+
+    applyLayerVisibility(canvas, refsRef, {
+      background: true,
+      masks: true,
+      content: false,
+    });
+
+    expect((shapeRefs.rect as any).set).toHaveBeenCalledWith({
+      visible: false,
+      selectable: false,
+      evented: false,
+    });
+    expect(canvas.renderAll).toHaveBeenCalled();
+  });
+
+  it("shows all layers when all visibility is true", () => {
+    const canvas = mockCanvas();
+    const shapeRefs = mockShapeRefs();
+    (shapeRefs.rect as any).set = vi.fn();
+    const maskRefs = mockMaskRefs();
+    (maskRefs.rect as any).set = vi.fn();
+    const refsRef = makeRefsRef([
+      [1, shapeRefs],
+      [2, maskRefs],
+    ]);
+
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "S",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
+    usePlannerStore.getState().addObject({ id: 2, type: "mask", name: "M" });
+
+    applyLayerVisibility(canvas, refsRef, {
+      background: true,
+      masks: true,
+      content: true,
+    });
+
+    expect((shapeRefs.rect as any).set).toHaveBeenCalledWith({
+      visible: true,
+      selectable: true,
+      evented: true,
+    });
+    expect((maskRefs.rect as any).set).toHaveBeenCalledWith({
+      visible: true,
+      selectable: true,
+      evented: true,
+    });
+  });
+
+  it("hides background layer when background visibility is false", () => {
+    const canvas = mockCanvas();
+    const imgRefs = mockImageRefs();
+    (imgRefs.image as any).set = vi.fn();
+    const refsRef = makeRefsRef([[1, imgRefs]]);
+
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "backgroundImage",
+      name: "BG",
+      imageData: "data:bg",
+    });
+
+    applyLayerVisibility(canvas, refsRef, {
+      background: false,
+      masks: true,
+      content: true,
+    });
+
+    expect((imgRefs.image as any).set).toHaveBeenCalledWith({
+      visible: false,
+      selectable: false,
+      evented: false,
+    });
+  });
+
+  it("skips refs with no matching store object", () => {
+    const canvas = mockCanvas();
+    const shapeRefs = mockShapeRefs();
+    (shapeRefs.rect as any).set = vi.fn();
+    const refsRef = makeRefsRef([[99, shapeRefs]]);
+
+    // No store object with id 99
+    applyLayerVisibility(canvas, refsRef, {
+      background: true,
+      masks: true,
+      content: true,
+    });
+
+    expect((shapeRefs.rect as any).set).not.toHaveBeenCalled();
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 });

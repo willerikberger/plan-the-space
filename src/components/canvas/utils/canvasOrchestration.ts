@@ -16,7 +16,9 @@ import type {
   SerializedLine,
   SerializedMask,
   SerializedImage,
+  LayerVisibility,
 } from "@/lib/types";
+import { layerGroupForType } from "@/lib/types";
 import { usePlannerStore } from "@/lib/store";
 import { getFabricProp } from "./fabricHelpers";
 
@@ -170,6 +172,47 @@ export function reorderObjects(
         fabricCanvas.moveObjectTo(refs.image, idx++);
         break;
     }
+  }
+  fabricCanvas.renderAll();
+}
+
+/**
+ * Apply layer visibility to all tracked Fabric objects in O(n).
+ * Each object's visibility and interactivity is set based on its layer group.
+ */
+export function applyLayerVisibility(
+  fabricCanvas: Canvas,
+  allFabricRefsRef: React.RefObject<Map<number, AnyFabricRefs>>,
+  visibility: LayerVisibility,
+): void {
+  const store = usePlannerStore.getState();
+
+  for (const [id, refs] of allFabricRefsRef.current) {
+    const obj = store.objects.get(id);
+    if (!obj) continue;
+
+    const group = layerGroupForType(obj.type);
+    const visible = visibility[group];
+
+    let fabricObj;
+    switch (refs.type) {
+      case "shape":
+      case "mask":
+        fabricObj = refs.rect;
+        break;
+      case "line":
+        fabricObj = refs.line;
+        break;
+      case "image":
+        fabricObj = refs.image;
+        break;
+    }
+
+    fabricObj.set({
+      visible,
+      selectable: visible,
+      evented: visible,
+    });
   }
   fabricCanvas.renderAll();
 }

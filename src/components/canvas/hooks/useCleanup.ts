@@ -1,8 +1,8 @@
 /**
  * @module useCleanup
  * @description Manages cleanup mode for drawing mask rectangles and adding background images.
- * Toggles visibility of normal objects so only masks and background images are shown and editable.
- * @dependencies fabric (FabricImage), fabricHelpers (createMaskRect, getFabricProp, setFabricProps), geometry (overlayImageScale), store, constants (MIN_MASK_SIZE_PX), types (MaskFabricRefs, ImageFabricRefs)
+ * Uses layer-level visibility to show/hide groups of objects in O(n).
+ * @dependencies fabric (FabricImage), fabricHelpers (createMaskRect, setFabricProps), canvasOrchestration (applyLayerVisibility), geometry (overlayImageScale), store, constants (MIN_MASK_SIZE_PX), types (FabricRefs, MaskFabricRefs, ImageFabricRefs)
  * @usage Called from PlannerCanvas; enter/exit cleanup and mask-drawing callbacks are exposed via the imperative handle and routed through useCanvasEvents.
  */
 "use client";
@@ -13,12 +13,18 @@ import type { Canvas, Rect } from "fabric";
 import { usePlannerStore } from "@/lib/store";
 import {
   createMaskRect,
-  getFabricProp,
   setFabricProps,
 } from "@/components/canvas/utils/fabricHelpers";
+import { applyLayerVisibility } from "@/components/canvas/utils/canvasOrchestration";
 import { overlayImageScale } from "@/components/canvas/utils/geometry";
 import { MIN_MASK_SIZE_PX } from "@/lib/constants";
-import type { Point, MaskFabricRefs, ImageFabricRefs } from "@/lib/types";
+import { layerGroupForType } from "@/lib/types";
+import type {
+  Point,
+  FabricRefs,
+  MaskFabricRefs,
+  ImageFabricRefs,
+} from "@/lib/types";
 
 export interface UseCleanupReturn {
   enterCleanupMode: () => void;
@@ -43,6 +49,7 @@ export interface UseCleanupReturn {
 export function useCleanup(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, MaskFabricRefs | ImageFabricRefs>>,
+  allFabricRefsRef: React.RefObject<Map<number, FabricRefs>>,
 ): UseCleanupReturn {
   const maskStartRef = useRef<Point | null>(null);
   const currentMaskRef = useRef<Rect | null>(null);
@@ -54,32 +61,10 @@ export function useCleanup(
     store.setMode("cleanup");
     store.setStatusMessage("Cleanup mode: Draw masks or add background images");
 
-    // Hide normal objects, show masks/bg images
-    for (const obj of store.objects.values()) {
-      for (const fo of canvas.getObjects()) {
-        if (getFabricProp(fo, "objectId") === obj.id) {
-          if (obj.type !== "mask" && obj.type !== "backgroundImage") {
-            fo.set("visible", false);
-          } else {
-            fo.set({ visible: true, selectable: true, evented: true });
-          }
-        }
-        // Also hide labels/dims
-        const parentId = getFabricProp(fo, "parentId");
-        if (parentId != null) {
-          const parent = store.objects.get(parentId);
-          if (
-            parent &&
-            parent.type !== "mask" &&
-            parent.type !== "backgroundImage"
-          ) {
-            fo.set("visible", false);
-          }
-        }
-      }
-    }
-    canvas.renderAll();
-  }, [fabricCanvasRef]);
+    const visibility = { background: true, masks: true, content: false };
+    store.setLayerVisibility(visibility);
+    applyLayerVisibility(canvas, allFabricRefsRef, visibility);
+  }, [fabricCanvasRef, allFabricRefsRef]);
 
   const exitCleanupMode = useCallback(() => {
     const canvas = fabricCanvasRef.current;
@@ -89,16 +74,28 @@ export function useCleanup(
     store.setStatusMessage("Back to normal mode");
     canvas.defaultCursor = "default";
 
-    // Show all objects, lock masks/bg images
-    for (const fo of canvas.getObjects()) {
-      fo.set("visible", true);
-      const objectType = getFabricProp(fo, "objectType");
-      if (objectType === "mask" || objectType === "backgroundImage") {
-        fo.set({ selectable: false, evented: false });
+    // Show all layers
+    const visibility = { background: true, masks: true, content: true };
+    store.setLayerVisibility(visibility);
+    applyLayerVisibility(canvas, allFabricRefsRef, visibility);
+
+    // Masks and background images should not be selectable in normal mode
+    for (const [id, refs] of allFabricRefsRef.current) {
+      const obj = store.objects.get(id);
+      if (!obj) continue;
+      const group = layerGroupForType(obj.type);
+      if (group === "background" || group === "masks") {
+        const fabricObj =
+          refs.type === "shape" || refs.type === "mask"
+            ? refs.rect
+            : refs.type === "line"
+              ? refs.line
+              : refs.image;
+        fabricObj.set({ selectable: false, evented: false });
       }
     }
     canvas.renderAll();
-  }, [fabricCanvasRef]);
+  }, [fabricCanvasRef, allFabricRefsRef]);
 
   const startDrawingMask = useCallback(() => {
     const canvas = fabricCanvasRef.current;

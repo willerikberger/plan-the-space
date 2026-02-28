@@ -166,6 +166,37 @@ describe("usePlannerStore", () => {
   });
 });
 
+describe("layerVisibility", () => {
+  it("defaults to all layers visible", () => {
+    const state = usePlannerStore.getState();
+    expect(state.layerVisibility).toEqual({
+      background: true,
+      masks: true,
+      content: true,
+    });
+  });
+
+  it("setLayerVisibility updates partial visibility", () => {
+    usePlannerStore.getState().setLayerVisibility({ content: false });
+    const state = usePlannerStore.getState();
+    expect(state.layerVisibility).toEqual({
+      background: true,
+      masks: true,
+      content: false,
+    });
+  });
+
+  it("reset restores all layers visible", () => {
+    usePlannerStore.getState().setLayerVisibility({ content: false });
+    usePlannerStore.getState().reset();
+    expect(usePlannerStore.getState().layerVisibility).toEqual({
+      background: true,
+      masks: true,
+      content: true,
+    });
+  });
+});
+
 describe("selectVisibleObjects", () => {
   it("returns only shapes, lines, overlayImages", () => {
     const shape: ShapeObject = {

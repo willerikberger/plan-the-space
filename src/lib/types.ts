@@ -434,8 +434,15 @@ export interface LayerEntry {
   zIndex: number; // ordering within the group
 }
 
+export interface LayerVisibility {
+  background: boolean;
+  masks: boolean;
+  content: boolean;
+}
+
 export interface LayerSliceState {
   layers: Record<LayerGroup, LayerEntry[]>;
+  layerVisibility: LayerVisibility;
 }
 
 export interface LayerSliceActions {
@@ -445,6 +452,7 @@ export interface LayerSliceActions {
   moveDownInLayer: (objectId: number) => void;
   getRenderOrder: () => number[]; // flat array of objectIds in render order
   clearLayers: () => void;
+  setLayerVisibility: (visibility: Partial<LayerVisibility>) => void;
 }
 
 export type LayerSlice = LayerSliceState & LayerSliceActions;

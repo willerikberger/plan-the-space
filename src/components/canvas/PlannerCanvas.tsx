@@ -142,6 +142,7 @@ export function PlannerCanvas({
     allFabricRefsRef as React.RefObject<
       Map<number, MaskFabricRefs | ImageFabricRefs>
     >,
+    allFabricRefsRef,
   );
 
   // Thin wrappers that bind refs to the extracted pure functions
