@@ -250,6 +250,11 @@ export function PlannerCanvas({
       // Set calibration — hook loaders will re-add objects via addObject()
       usePlannerStore.getState().setPixelsPerMeter(ss.pixelsPerMeter);
 
+      // Restore camera if present in snapshot
+      if (ss.camera) {
+        usePlannerStore.getState().setCamera(ss.camera);
+      }
+
       // Reconstruct Fabric objects from snapshots
       // Build SerializedObject[] from fabricSnapshots + store objects
       const serializedObjects: SerializedObject[] = [];
@@ -447,6 +452,7 @@ export function PlannerCanvas({
       objects,
       getFabricState,
       getBackgroundPosition(),
+      s.camera,
     );
     await saveToIDB(data);
     s.setStatusMessage("Saved to browser storage");
@@ -483,6 +489,11 @@ export function PlannerCanvas({
     try {
       clearCanvas();
       usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
+
+      // Restore camera if saved
+      if (deserialized.camera) {
+        usePlannerStore.getState().setCamera(deserialized.camera);
+      }
 
       if (deserialized.backgroundImageData) {
         usePlannerStore
@@ -524,6 +535,7 @@ export function PlannerCanvas({
       objects,
       getFabricState,
       getBackgroundPosition(),
+      s.camera,
     );
     downloadProjectAsJson(data);
     s.setStatusMessage("Project exported successfully");
@@ -568,6 +580,11 @@ export function PlannerCanvas({
         usePlannerStore
           .getState()
           .setPixelsPerMeter(deserialized.pixelsPerMeter);
+
+        // Restore camera if present in imported data
+        if (deserialized.camera) {
+          usePlannerStore.getState().setCamera(deserialized.camera);
+        }
 
         if (deserialized.backgroundImageData) {
           usePlannerStore

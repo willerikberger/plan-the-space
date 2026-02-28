@@ -10,6 +10,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { Canvas } from "fabric";
 import { CANVAS_BG } from "@/lib/constants";
+import { usePlannerStore } from "@/lib/store";
 
 export interface UseFabricCanvasReturn {
   canvasElRef: React.RefObject<HTMLCanvasElement | null>;
@@ -46,10 +47,11 @@ export function useFabricCanvas(): UseFabricCanvasReturn {
       const canvas = fabricCanvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
-      canvas.setDimensions({
-        width: container.clientWidth,
-        height: container.clientHeight,
-      });
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      canvas.setDimensions({ width: w, height: h });
+      // Update camera viewport dimensions — objects stay in world space
+      usePlannerStore.getState().updateCameraViewport(w, h);
       canvas.renderAll();
     };
 

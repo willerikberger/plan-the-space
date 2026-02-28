@@ -93,6 +93,7 @@ export function useHistory({
       backgroundImagePosition: getBackgroundPosition?.() ?? null,
       objects: clonedObjects,
       objectIdCounter: store.objectIdCounter,
+      camera: store.camera,
     };
 
     // Capture Fabric state for each object

@@ -12,6 +12,7 @@ import { Point as FabricPoint } from "fabric";
 import type { Canvas, TPointerEventInfo } from "fabric";
 import { ZOOM_MIN, ZOOM_MAX } from "@/lib/constants";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
+import { cameraFromFabricViewport } from "@/components/canvas/utils/coordinates";
 
 export interface UsePanZoomReturn {
   isPanningRef: React.RefObject<boolean>;
@@ -27,6 +28,24 @@ export function usePanZoom(
   const lastPosRef = useRef({ x: 0, y: 0 });
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Sync Zustand camera state from the current Fabric viewport transform */
+  const syncCamera = () => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const store = usePlannerStore.getState();
+    if (!store.pixelsPerMeter) return;
+    const vpt = canvas.viewportTransform;
+    if (!vpt) return;
+    store.setCamera(
+      cameraFromFabricViewport(
+        vpt,
+        store.pixelsPerMeter,
+        canvas.getWidth(),
+        canvas.getHeight(),
+      ),
+    );
+  };
+
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
@@ -38,6 +57,7 @@ export function usePanZoom(
       zoom *= 0.999 ** delta;
       zoom = Math.min(Math.max(ZOOM_MIN, zoom), ZOOM_MAX);
       canvas.zoomToPoint(new FabricPoint(e.offsetX, e.offsetY), zoom);
+      syncCamera();
       e.preventDefault();
       e.stopPropagation();
 
@@ -82,6 +102,7 @@ export function usePanZoom(
     if (!canvas) return;
     isPanningRef.current = false;
     canvas.selection = true;
+    syncCamera();
   };
 
   return { isPanningRef, startPan, movePan, endPan };
