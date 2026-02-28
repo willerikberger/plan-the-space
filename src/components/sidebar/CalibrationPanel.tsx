@@ -20,8 +20,8 @@ export function CalibrationPanel({
   const [lengthValue, setLengthValue] = useState("");
   const [error, setError] = useState("");
   const mode = usePlannerStore((s) => s.mode);
-  const hasBackgroundImage = usePlannerStore(
-    (s) => s.backgroundImageData !== null,
+  const hasBackgroundImage = usePlannerStore((s) =>
+    Array.from(s.objects.values()).some((o) => o.type === "backgroundImage"),
   );
   const showInput = usePlannerStore((s) => s.showCalibrationInput);
 

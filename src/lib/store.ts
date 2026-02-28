@@ -35,7 +35,6 @@ const initialHistoryState: HistoryState = {
 const initialCanvasState = {
   mode: "normal" as PlannerMode,
   pixelsPerMeter: null as number | null,
-  backgroundImageData: null as string | null,
   calibrationPixelLength: null as number | null,
   showCalibrationInput: false,
   camera: null as Camera | null,
@@ -68,7 +67,6 @@ const createCanvasSlice: StoreSliceCreator<CanvasSlice> = (set) => ({
       return { mode };
     }),
   setPixelsPerMeter: (ppm) => set({ pixelsPerMeter: ppm }),
-  setBackgroundImageData: (data) => set({ backgroundImageData: data }),
   setCalibrationPixelLength: (len) => set({ calibrationPixelLength: len }),
   setShowCalibrationInput: (show) => set({ showCalibrationInput: show }),
   setCamera: (camera) => set({ camera }),
@@ -298,7 +296,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   ...createLayerSlice(...a),
 
   // Cross-slice actions
-  loadProject: ({ pixelsPerMeter, backgroundImageData, objects }) => {
+  loadProject: ({ pixelsPerMeter, objects }) => {
     const [set] = a;
     const map = new Map<number, PlannerObject>();
     let maxId = 0;
@@ -308,7 +306,6 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
     }
     set({
       pixelsPerMeter,
-      backgroundImageData,
       objects: map,
       objectIdCounter: maxId,
       mode: "normal",

@@ -157,39 +157,34 @@ describe("round-trip serialize -> deserialize", () => {
       color: "rgba(244, 67, 54, 1)",
     };
 
-    const project = serializeProject(
-      50,
-      "data:image/png;base64,abc",
-      [shape, line],
-      (id) => {
-        if (id === 0)
-          return {
-            left: 100,
-            top: 200,
-            scaleX: 1,
-            scaleY: 1,
-            angle: 45,
-            width: 125,
-            height: 155,
-            baseWidthPx: 125,
-            baseHeightPx: 155,
-          };
-        if (id === 1)
-          return {
-            left: 50,
-            top: 50,
-            scaleX: 1,
-            scaleY: 1,
-            angle: 0,
-            x1: 0,
-            y1: 0,
-            x2: 200,
-            y2: 0,
-            strokeWidth: 3,
-          };
-        return null;
-      },
-    );
+    const project = serializeProject(50, [shape, line], (id) => {
+      if (id === 0)
+        return {
+          left: 100,
+          top: 200,
+          scaleX: 1,
+          scaleY: 1,
+          angle: 45,
+          width: 125,
+          height: 155,
+          baseWidthPx: 125,
+          baseHeightPx: 155,
+        };
+      if (id === 1)
+        return {
+          left: 50,
+          top: 50,
+          scaleX: 1,
+          scaleY: 1,
+          angle: 0,
+          x1: 0,
+          y1: 0,
+          x2: 200,
+          y2: 0,
+          strokeWidth: 3,
+        };
+      return null;
+    });
 
     expect(project.version).toBe(4);
     expect(project.pixelsPerMeter).toBe(50);
@@ -200,7 +195,6 @@ describe("round-trip serialize -> deserialize", () => {
 
     const deserialized = deserializeProject(project);
     expect(deserialized.pixelsPerMeter).toBe(50);
-    expect(deserialized.backgroundImageData).toBe("data:image/png;base64,abc");
     expect(deserialized.objects).toHaveLength(2);
 
     const dShape = deserialized.objects[0];
@@ -262,11 +256,16 @@ describe("backward compatibility (v2 format from vanilla app)", () => {
 
     expect(validateProjectData(v2Data)).toBe(true);
     const result = deserializeProject(v2Data);
-    expect(result.objects).toHaveLength(2);
-    expect(result.objects[0].type).toBe("shape");
-    expect(result.objects[1].type).toBe("mask");
+    // 3 objects: migrated bgImage (unshifted) + shape + mask
+    expect(result.objects).toHaveLength(3);
+    expect(result.objects[0].type).toBe("backgroundImage");
+    expect(result.objects[1].type).toBe("shape");
+    expect(result.objects[2].type).toBe("mask");
     // Serialized data preserved for canvas reconstruction
-    expect(result.serializedObjects[0]).toHaveProperty("baseWidthPx", 220.5);
+    const serializedShape = result.serializedObjects.find(
+      (o) => o.type === "shape",
+    );
+    expect(serializedShape).toHaveProperty("baseWidthPx", 220.5);
   });
 });
 

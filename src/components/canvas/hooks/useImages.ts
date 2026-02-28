@@ -1,13 +1,13 @@
 /**
  * @module useImages
  * @description Loads and manages background and overlay images on the Fabric canvas.
- * Handles file reading, scaling to fit/overlay, and syncing image state with the Zustand store.
+ * Both background and overlay images are tracked as regular store objects with Fabric refs.
  * @dependencies fabric (FabricImage), fabricHelpers (setFabricProps), geometry (fitImageScale, overlayImageScale), store, types (ImageFabricRefs)
  * @usage Called from PlannerCanvas; loadBackgroundImage and addOverlayImage are exposed via the imperative handle to the sidebar.
  */
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import { FabricImage } from "fabric";
 import type { Canvas } from "fabric";
 import { usePlannerStore } from "@/lib/store";
@@ -16,16 +16,10 @@ import {
   fitImageScale,
   overlayImageScale,
 } from "@/components/canvas/utils/geometry";
-import type { ImageFabricRefs, BackgroundImagePosition } from "@/lib/types";
+import type { ImageFabricRefs } from "@/lib/types";
 
 export interface UseImagesReturn {
-  backgroundRef: React.MutableRefObject<FabricImage | null>;
   loadBackgroundImage: (file: File) => void;
-  loadBackgroundFromData: (
-    data: string,
-    callback?: () => void | Promise<void>,
-    position?: BackgroundImagePosition,
-  ) => Promise<void>;
   addOverlayImage: (file: File) => void;
   loadImageObject: (data: {
     type: "backgroundImage" | "overlayImage";
@@ -45,49 +39,30 @@ export function useImages(
   fabricCanvasRef: React.RefObject<Canvas | null>,
   fabricRefsRef: React.RefObject<Map<number, ImageFabricRefs>>,
 ): UseImagesReturn {
-  const backgroundRef = useRef<FabricImage | null>(null);
-
   const loadBackgroundImage = useCallback(
     (file: File) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
+        const canvas = fabricCanvasRef.current;
+        if (!canvas) return;
         const dataUrl = e.target?.result as string;
-        usePlannerStore.getState().setBackgroundImageData(dataUrl);
-        loadBackgroundFromData(dataUrl);
-      };
-      reader.readAsDataURL(file);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
 
-  const loadBackgroundFromData = useCallback(
-    async (
-      dataUrl: string,
-      callback?: () => void | Promise<void>,
-      position?: BackgroundImagePosition,
-    ) => {
-      const canvas = fabricCanvasRef.current;
-      if (!canvas) return;
+        // Remove any existing background image
+        const store = usePlannerStore.getState();
+        for (const [id, obj] of store.objects) {
+          if (obj.type === "backgroundImage") {
+            const refs = fabricRefsRef.current.get(id);
+            if (refs) {
+              canvas.remove(refs.image);
+              fabricRefsRef.current.delete(id);
+            }
+            store.removeObject(id);
+            break;
+          }
+        }
 
-      const img = await FabricImage.fromURL(dataUrl);
+        const img = await FabricImage.fromURL(dataUrl);
 
-      if (backgroundRef.current) {
-        canvas.remove(backgroundRef.current);
-      }
-
-      if (position) {
-        // Restore exact saved position/scale
-        img.set({
-          scaleX: position.scaleX,
-          scaleY: position.scaleY,
-          left: position.left,
-          top: position.top,
-          selectable: false,
-          evented: false,
-          hoverCursor: "default",
-        });
-      } else {
         // First load — fit to canvas
         const canvasWidth = canvas.getWidth();
         const canvasHeight = canvas.getHeight();
@@ -107,22 +82,35 @@ export function useImages(
           evented: false,
           hoverCursor: "default",
         });
-      }
-      setFabricProps(img, { objectType: "background" });
 
-      backgroundRef.current = img;
-      canvas.add(img);
-      canvas.sendObjectToBack(img);
-      canvas.renderAll();
+        const id = usePlannerStore.getState().nextObjectId();
+        setFabricProps(img, {
+          objectId: id,
+          objectType: "backgroundImage",
+          imageData: dataUrl,
+        });
 
-      usePlannerStore
-        .getState()
-        .setStatusMessage(
-          "Image loaded. Set the scale to start adding shapes.",
-        );
-      await callback?.();
+        canvas.add(img);
+        canvas.renderAll();
+
+        fabricRefsRef.current.set(id, { type: "image", image: img });
+
+        usePlannerStore.getState().addObject({
+          id,
+          type: "backgroundImage",
+          name: "Background",
+          imageData: dataUrl,
+        });
+
+        usePlannerStore
+          .getState()
+          .setStatusMessage(
+            "Image loaded. Set the scale to start adding shapes.",
+          );
+      };
+      reader.readAsDataURL(file);
     },
-    [fabricCanvasRef],
+    [fabricCanvasRef, fabricRefsRef],
   );
 
   const addOverlayImage = useCallback(
@@ -232,9 +220,7 @@ export function useImages(
   );
 
   return {
-    backgroundRef,
     loadBackgroundImage,
-    loadBackgroundFromData,
     addOverlayImage,
     loadImageObject,
   };

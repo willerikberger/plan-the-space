@@ -141,7 +141,6 @@ describe("scheduleAutoSave", () => {
   it("calls serializeProject with current store state", async () => {
     // Seed the store
     usePlannerStore.getState().setPixelsPerMeter(75);
-    usePlannerStore.getState().setBackgroundImageData("data:image/test");
     usePlannerStore.getState().addObject({
       id: 0,
       type: "shape",
@@ -161,11 +160,9 @@ describe("scheduleAutoSave", () => {
       .calls[0];
     // First arg: pixelsPerMeter
     expect(callArgs[0]).toBe(75);
-    // Second arg: backgroundImageData
-    expect(callArgs[1]).toBe("data:image/test");
-    // Third arg: objects array
-    expect(callArgs[2]).toHaveLength(1);
-    expect(callArgs[2][0].name).toBe("S");
+    // Second arg: objects array
+    expect(callArgs[1]).toHaveLength(1);
+    expect(callArgs[1][0].name).toBe("S");
   });
 
   it('sets status message to "Saved to browser storage" on success', async () => {
@@ -201,7 +198,6 @@ describe("scheduleAutoSave", () => {
 describe("handleBeforeUnload", () => {
   it("calls serializeProject and saveToIDB with current state", () => {
     usePlannerStore.getState().setPixelsPerMeter(100);
-    usePlannerStore.getState().setBackgroundImageData("data:bg");
     usePlannerStore.getState().addObject({
       id: 0,
       type: "shape",
@@ -220,8 +216,7 @@ describe("handleBeforeUnload", () => {
     expect(serializeProject).toHaveBeenCalledTimes(1);
     const callArgs = serializeProject.mock.calls[0];
     expect(callArgs[0]).toBe(100);
-    expect(callArgs[1]).toBe("data:bg");
-    expect(callArgs[2]).toHaveLength(1);
+    expect(callArgs[1]).toHaveLength(1);
 
     expect(saveToIDB).toHaveBeenCalledTimes(1);
   });
@@ -277,9 +272,9 @@ describe("handleBeforeUnload", () => {
 
     handleBeforeUnload(getFabricState, serializeProject, saveToIDB);
 
-    // The fourth argument to serializeProject should be the getFabricState function
+    // The third argument to serializeProject should be the getFabricState function
     const callArgs = serializeProject.mock.calls[0];
-    expect(callArgs[3]).toBe(getFabricState);
+    expect(callArgs[2]).toBe(getFabricState);
   });
 
   it("skips save when store has no objects and no calibration", () => {

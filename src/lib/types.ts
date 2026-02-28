@@ -166,8 +166,6 @@ export type ImageRef = string; // hash key into image dedup pool
 
 export interface StoreSnapshot {
   pixelsPerMeter: number | null;
-  backgroundImageRef: ImageRef | null;
-  backgroundImagePosition?: BackgroundImagePosition | null;
   objects: PlannerObject[]; // deep clone of Map values
   objectIdCounter: number;
   camera?: Camera | null;
@@ -364,7 +362,6 @@ export interface CalibrationState {
 export interface CanvasSliceState {
   mode: PlannerMode;
   pixelsPerMeter: number | null;
-  backgroundImageData: string | null;
   calibrationPixelLength: number | null;
   showCalibrationInput: boolean;
   camera: Camera | null;
@@ -373,7 +370,6 @@ export interface CanvasSliceState {
 export interface CanvasSliceActions {
   setMode: (mode: PlannerMode) => void;
   setPixelsPerMeter: (ppm: number | null) => void;
-  setBackgroundImageData: (data: string | null) => void;
   setCalibrationPixelLength: (len: number | null) => void;
   setShowCalibrationInput: (show: boolean) => void;
   setCamera: (camera: Camera) => void;
@@ -483,7 +479,6 @@ export type PlannerActions = CanvasSliceActions &
   LayerSliceActions & {
     loadProject: (data: {
       pixelsPerMeter: number | null;
-      backgroundImageData: string | null;
       objects: PlannerObject[];
     }) => void;
     reset: () => void;

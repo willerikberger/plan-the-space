@@ -20,7 +20,6 @@ import type {
   SerializedObject,
   HistorySnapshot,
   PlannerObject,
-  BackgroundImagePosition,
 } from "@/lib/types";
 import {
   serializeProject,
@@ -154,26 +153,14 @@ export function PlannerCanvas({
   const clearCanvas = useCallback(() => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
-    clearCanvasUtil(canvas, allFabricRefsRef, images.backgroundRef);
-  }, [fabricCanvasRef, images.backgroundRef]);
-
-  const getBackgroundPosition =
-    useCallback((): BackgroundImagePosition | null => {
-      const bg = images.backgroundRef.current;
-      if (!bg) return null;
-      return {
-        left: bg.left ?? 0,
-        top: bg.top ?? 0,
-        scaleX: bg.scaleX ?? 1,
-        scaleY: bg.scaleY ?? 1,
-      };
-    }, [images.backgroundRef]);
+    clearCanvasUtil(canvas, allFabricRefsRef);
+  }, [fabricCanvasRef]);
 
   const reorderObjects = useCallback(() => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
-    reorderObjectsUtil(canvas, allFabricRefsRef, images.backgroundRef);
-  }, [fabricCanvasRef, images.backgroundRef]);
+    reorderObjectsUtil(canvas, allFabricRefsRef);
+  }, [fabricCanvasRef]);
 
   const deleteObject = useCallback(
     (id: number) => {
@@ -192,7 +179,6 @@ export function PlannerCanvas({
         serializedObjects,
         canvas,
         allFabricRefsRef,
-        images.backgroundRef,
         {
           loadShape: shapes.loadShape,
           loadLine: lines.loadLine,
@@ -219,12 +205,6 @@ export function PlannerCanvas({
 
       const manager = historyManagerRef.current;
       const ss = snapshot.storeSnapshot;
-
-      // Resolve background image
-      let backgroundImageData: string | null = null;
-      if (ss.backgroundImageRef && manager) {
-        backgroundImageData = await manager.resolveImage(ss.backgroundImageRef);
-      }
 
       // Restore store objects — resolve image refs back to data
       const objects: PlannerObject[] = [];
@@ -256,7 +236,6 @@ export function PlannerCanvas({
       }
 
       // Reconstruct Fabric objects from snapshots
-      // Build SerializedObject[] from fabricSnapshots + store objects
       const serializedObjects: SerializedObject[] = [];
       for (const fs of snapshot.fabricSnapshots) {
         const storeObj = objects.find((o) => o.id === fs.id);
@@ -287,29 +266,20 @@ export function PlannerCanvas({
         }
       }
 
-      if (backgroundImageData) {
-        usePlannerStore.getState().setBackgroundImageData(backgroundImageData);
-        await images.loadBackgroundFromData(
-          backgroundImageData,
-          () => loadProjectFromData(serializedObjects),
-          ss.backgroundImagePosition ?? undefined,
-        );
-      } else {
-        await loadProjectFromData(serializedObjects);
-      }
+      await loadProjectFromData(serializedObjects);
+
       // Restore saved layer ordering from snapshot
       if (ss.layers) {
         usePlannerStore.setState({ layers: ss.layers });
         reorderObjects();
       }
     },
-    [clearCanvas, images, loadProjectFromData, reorderObjects],
+    [clearCanvas, loadProjectFromData, reorderObjects],
   );
 
   const history = useHistory({
     getFabricState,
     restoreFromSnapshot,
-    getBackgroundPosition,
   });
   const { captureSnapshot, undo, redo, resetHistory, isRestoringRef } = history;
 
@@ -330,22 +300,16 @@ export function PlannerCanvas({
       getFabricState,
       serializeProject,
       saveToIDB,
-      getBackgroundPosition,
     });
-  }, [getFabricState, isRestoringRef, getBackgroundPosition]);
+  }, [getFabricState, isRestoringRef]);
 
   // beforeunload — best-effort save on page close
   useEffect(() => {
     const handler = () =>
-      handleBeforeUnload(
-        getFabricState,
-        serializeProject,
-        saveToIDB,
-        getBackgroundPosition,
-      );
+      handleBeforeUnload(getFabricState, serializeProject, saveToIDB);
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [getFabricState, getBackgroundPosition]);
+  }, [getFabricState]);
 
   // ============================================
   // Object management
@@ -355,7 +319,8 @@ export function PlannerCanvas({
     if (!canvas) return;
     const active = canvas.getActiveObjects();
     for (const fo of active) {
-      if (getFabricProp(fo, "objectType") === "background") continue;
+      const objType = getFabricProp(fo, "objectType");
+      if (objType === "background" || objType === "backgroundImage") continue;
       const id = getFabricProp(fo, "objectId");
       if (id != null) {
         deleteObject(id as number);
@@ -430,16 +395,14 @@ export function PlannerCanvas({
     const objects = Array.from(s.objects.values());
     const data = serializeProject(
       s.pixelsPerMeter,
-      s.backgroundImageData,
       objects,
       getFabricState,
-      getBackgroundPosition(),
       s.camera,
       s.layers,
     );
     await saveToIDB(data);
     s.setStatusMessage("Saved to browser storage");
-  }, [getFabricState, getBackgroundPosition]);
+  }, [getFabricState]);
 
   const load = useCallback(async () => {
     const data = await loadFromIDB();
@@ -478,18 +441,8 @@ export function PlannerCanvas({
         usePlannerStore.getState().setCamera(deserialized.camera);
       }
 
-      if (deserialized.backgroundImageData) {
-        usePlannerStore
-          .getState()
-          .setBackgroundImageData(deserialized.backgroundImageData);
-        await images.loadBackgroundFromData(
-          deserialized.backgroundImageData,
-          () => loadProjectFromData(deserialized.serializedObjects),
-          deserialized.backgroundImagePosition,
-        );
-      } else {
-        await loadProjectFromData(deserialized.serializedObjects);
-      }
+      await loadProjectFromData(deserialized.serializedObjects);
+
       // Restore saved layer ordering (overrides addObject defaults)
       if (deserialized.layers) {
         usePlannerStore.setState({ layers: deserialized.layers });
@@ -509,7 +462,6 @@ export function PlannerCanvas({
     }
   }, [
     clearCanvas,
-    images,
     loadProjectFromData,
     reorderObjects,
     resetHistory,
@@ -526,16 +478,14 @@ export function PlannerCanvas({
     const objects = Array.from(s.objects.values());
     const data = serializeProject(
       s.pixelsPerMeter,
-      s.backgroundImageData,
       objects,
       getFabricState,
-      getBackgroundPosition(),
       s.camera,
       s.layers,
     );
     downloadProjectAsJson(data);
     s.setStatusMessage("Project exported successfully");
-  }, [getFabricState, getBackgroundPosition]);
+  }, [getFabricState]);
 
   const importJson = useCallback(
     async (file: File) => {
@@ -582,18 +532,8 @@ export function PlannerCanvas({
           usePlannerStore.getState().setCamera(deserialized.camera);
         }
 
-        if (deserialized.backgroundImageData) {
-          usePlannerStore
-            .getState()
-            .setBackgroundImageData(deserialized.backgroundImageData);
-          await images.loadBackgroundFromData(
-            deserialized.backgroundImageData,
-            () => loadProjectFromData(deserialized.serializedObjects),
-            deserialized.backgroundImagePosition,
-          );
-        } else {
-          await loadProjectFromData(deserialized.serializedObjects);
-        }
+        await loadProjectFromData(deserialized.serializedObjects);
+
         // Restore saved layer ordering (overrides addObject defaults)
         if (deserialized.layers) {
           usePlannerStore.setState({ layers: deserialized.layers });
@@ -612,7 +552,6 @@ export function PlannerCanvas({
     },
     [
       clearCanvas,
-      images,
       loadProjectFromData,
       reorderObjects,
       resetHistory,

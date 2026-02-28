@@ -5,7 +5,7 @@
  * @dependencies fabricHelpers (getFabricProp), store (clearObjects, removeObject), types (ShapeFabricRefs, LineFabricRefs, MaskFabricRefs, ImageFabricRefs, SerializedObject subtypes)
  * @usage Called from PlannerCanvas for project load/clear/reorder and from the imperative handle for delete operations.
  */
-import type { Canvas, FabricImage } from "fabric";
+import type { Canvas } from "fabric";
 import type {
   ShapeFabricRefs,
   LineFabricRefs,
@@ -117,12 +117,10 @@ export function getFabricState(
 
 /**
  * Remove all tracked Fabric objects from the canvas and clear the refs map.
- * Also removes the background image if present.
  */
 export function clearCanvas(
   fabricCanvas: Canvas,
   allFabricRefsRef: React.RefObject<Map<number, AnyFabricRefs>>,
-  backgroundRef: React.MutableRefObject<FabricImage | null>,
 ): void {
   // Remove all tracked objects from canvas (one Fabric object per refs entry)
   for (const [, refs] of allFabricRefsRef.current) {
@@ -140,29 +138,18 @@ export function clearCanvas(
     }
   }
   allFabricRefsRef.current.clear();
-  if (backgroundRef.current) {
-    fabricCanvas.remove(backgroundRef.current);
-    backgroundRef.current = null;
-  }
   usePlannerStore.getState().clearObjects();
 }
 
 /**
  * Re-order Fabric objects on the canvas using the store-driven layer system.
- * Order: backgroundRef (untracked) → background group → masks group → content group.
+ * Order: background group → masks group → content group.
  */
 export function reorderObjects(
   fabricCanvas: Canvas,
   allFabricRefsRef: React.RefObject<Map<number, AnyFabricRefs>>,
-  backgroundRef: React.RefObject<FabricImage | null>,
 ): void {
   let idx = 0;
-
-  // Untracked background image first (will be unified in Phase 4)
-  if (backgroundRef.current) {
-    fabricCanvas.moveObjectTo(backgroundRef.current, 0);
-    idx = 1;
-  }
 
   const store = usePlannerStore.getState();
   const renderOrder = store.getRenderOrder();
@@ -231,7 +218,6 @@ export async function loadProjectFromData(
   serializedObjects: SerializedObject[],
   fabricCanvas: Canvas,
   allFabricRefsRef: React.RefObject<Map<number, AnyFabricRefs>>,
-  backgroundRef: React.RefObject<FabricImage | null>,
   hooks: LoadProjectHooks,
 ): Promise<void> {
   for (const sObj of serializedObjects) {
@@ -251,6 +237,6 @@ export async function loadProjectFromData(
         break;
     }
   }
-  reorderObjects(fabricCanvas, allFabricRefsRef, backgroundRef);
+  reorderObjects(fabricCanvas, allFabricRefsRef);
   fabricCanvas.renderAll();
 }

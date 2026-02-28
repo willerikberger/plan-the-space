@@ -25,7 +25,6 @@ import type {
   MaskObject,
   BackgroundImageObject,
   OverlayImageObject,
-  BackgroundImagePosition,
   Camera,
 } from "@/lib/types";
 import { layerGroupForType } from "@/lib/types";
@@ -139,7 +138,6 @@ export function serializeObject(
 /** Build the full project data object for export (v4 format with camera + world coords + layers) */
 export function serializeProject(
   pixelsPerMeter: number | null,
-  backgroundImageData: string | null,
   objects: PlannerObject[],
   getFabricState: (id: number) => {
     left: number;
@@ -159,7 +157,6 @@ export function serializeProject(
     originX?: string;
     originY?: string;
   } | null,
-  backgroundImagePosition?: BackgroundImagePosition | null,
   camera?: Camera | null,
   layers?: Record<LayerGroup, LayerEntry[]> | null,
 ): SerializedProject {
@@ -203,8 +200,7 @@ export function serializeProject(
   return {
     version: 4,
     pixelsPerMeter,
-    backgroundImage: backgroundImageData,
-    ...(backgroundImagePosition ? { backgroundImagePosition } : {}),
+    backgroundImage: null, // background is now in objects array
     ...(serializedCamera ? { camera: serializedCamera } : {}),
     ...(serializedLayers ? { layers: serializedLayers } : {}),
     savedAt: new Date().toISOString(),
@@ -216,14 +212,13 @@ export function serializeProject(
 /** Deserialize a project JSON into store-ready objects */
 export function deserializeProject(data: SerializedProject): {
   pixelsPerMeter: number | null;
-  backgroundImageData: string | null;
-  backgroundImagePosition?: BackgroundImagePosition;
   camera?: Camera;
   layers?: Record<LayerGroup, LayerEntry[]>;
   objects: PlannerObject[];
   serializedObjects: SerializedObject[];
 } {
   const objects: PlannerObject[] = [];
+  const serializedObjects: SerializedObject[] = [...data.objects];
 
   for (const sObj of data.objects) {
     // Cast to v4 types to access optional world-space fields
@@ -292,6 +287,33 @@ export function deserializeProject(data: SerializedProject): {
     }
   }
 
+  // Backward compat: migrate top-level backgroundImage into objects array
+  const hasBgObject = objects.some((o) => o.type === "backgroundImage");
+  if (data.backgroundImage && !hasBgObject) {
+    const bgPos = data.backgroundImagePosition;
+    const maxId =
+      objects.length > 0 ? Math.max(...objects.map((o) => o.id)) + 1 : 0;
+    objects.unshift({
+      id: maxId,
+      type: "backgroundImage",
+      name: "Background",
+      imageData: data.backgroundImage,
+    } satisfies BackgroundImageObject);
+    serializedObjects.unshift({
+      id: maxId,
+      type: "backgroundImage",
+      name: "Background",
+      imageData: data.backgroundImage,
+      left: bgPos?.left ?? 0,
+      top: bgPos?.top ?? 0,
+      scaleX: bgPos?.scaleX ?? 1,
+      scaleY: bgPos?.scaleY ?? 1,
+      angle: 0,
+      originX: "left",
+      originY: "top",
+    } satisfies SerializedImage);
+  }
+
   // Extract camera from v4 projects
   const v4Data = data as Partial<SerializedProjectV4>;
   const camera: Camera | undefined = v4Data.camera
@@ -329,14 +351,10 @@ export function deserializeProject(data: SerializedProject): {
 
   return {
     pixelsPerMeter: data.pixelsPerMeter,
-    backgroundImageData: data.backgroundImage,
-    ...(data.backgroundImagePosition
-      ? { backgroundImagePosition: data.backgroundImagePosition }
-      : {}),
     ...(camera ? { camera } : {}),
     ...(layers ? { layers } : {}),
     objects,
-    serializedObjects: data.objects,
+    serializedObjects,
   };
 }
 

@@ -282,7 +282,7 @@ describe("serializeProject (extended)", () => {
       color: "blue",
     };
 
-    const project = serializeProject(50, null, [shape, line], (id) => {
+    const project = serializeProject(50, [shape, line], (id) => {
       // Only shape has fabric state; line returns null
       if (id === 0) {
         return {
@@ -314,13 +314,13 @@ describe("serializeProject (extended)", () => {
       color: "red",
     };
 
-    const project = serializeProject(100, null, [shape], () => null);
+    const project = serializeProject(100, [shape], () => null);
 
     expect(project.objects).toHaveLength(0);
   });
 
   it("serializes with null pixelsPerMeter and null backgroundImage", () => {
-    const project = serializeProject(null, null, [], () => null);
+    const project = serializeProject(null, [], () => null);
 
     expect(project.version).toBe(4);
     expect(project.pixelsPerMeter).toBeNull();
@@ -330,7 +330,7 @@ describe("serializeProject (extended)", () => {
   });
 
   it("includes metadata in v3 format", () => {
-    const project = serializeProject(50, null, [], () => null);
+    const project = serializeProject(50, [], () => null);
 
     // Cast to check v3 metadata
     const v3 = project as {
@@ -343,7 +343,7 @@ describe("serializeProject (extended)", () => {
 
   it("includes a valid ISO savedAt timestamp", () => {
     const before = new Date().toISOString();
-    const project = serializeProject(50, null, [], () => null);
+    const project = serializeProject(50, [], () => null);
     const after = new Date().toISOString();
 
     expect(project.savedAt >= before).toBe(true);
@@ -438,34 +438,29 @@ describe("deserializeProject (images)", () => {
       imageData: "data:image/jpeg;base64,roundtrip2",
     };
 
-    const project = serializeProject(
-      75,
-      "data:bg-main",
-      [bgObj, overlayObj],
-      (id) => {
-        if (id === 10)
-          return {
-            left: 0,
-            top: 0,
-            scaleX: 0.5,
-            scaleY: 0.5,
-            angle: 0,
-            originX: "center",
-            originY: "center",
-          };
-        if (id === 11)
-          return {
-            left: 50,
-            top: 50,
-            scaleX: 1,
-            scaleY: 1,
-            angle: 45,
-            originX: "left",
-            originY: "top",
-          };
-        return null;
-      },
-    );
+    const project = serializeProject(75, [bgObj, overlayObj], (id) => {
+      if (id === 10)
+        return {
+          left: 0,
+          top: 0,
+          scaleX: 0.5,
+          scaleY: 0.5,
+          angle: 0,
+          originX: "center",
+          originY: "center",
+        };
+      if (id === 11)
+        return {
+          left: 50,
+          top: 50,
+          scaleX: 1,
+          scaleY: 1,
+          angle: 45,
+          originX: "left",
+          originY: "top",
+        };
+      return null;
+    });
 
     const deserialized = deserializeProject(project);
     expect(deserialized.objects).toHaveLength(2);
@@ -579,7 +574,6 @@ describe("deserializeProject (mixed)", () => {
     const result = deserializeProject(data);
     expect(result.objects).toHaveLength(5);
     expect(result.pixelsPerMeter).toBe(100);
-    expect(result.backgroundImageData).toBe("data:image/png;base64,main");
 
     expect(result.objects[0].type).toBe("shape");
     expect(result.objects[1].type).toBe("line");
@@ -604,7 +598,6 @@ describe("deserializeProject (mixed)", () => {
     expect(result.objects).toHaveLength(0);
     expect(result.serializedObjects).toHaveLength(0);
     expect(result.pixelsPerMeter).toBeNull();
-    expect(result.backgroundImageData).toBeNull();
   });
 });
 

@@ -32,10 +32,6 @@ function makeRefsRef(entries: [number, AnyFabricRefs][] = []) {
   return { current: new Map<number, AnyFabricRefs>(entries) };
 }
 
-function makeBgRef(value: unknown = null) {
-  return { current: value } as React.MutableRefObject<any>;
-}
-
 /** Minimal mock of a Fabric Canvas with the methods used by the orchestration functions. */
 function mockCanvas() {
   return {
@@ -265,7 +261,6 @@ describe("clearCanvas", () => {
       [1, shapeRefs],
       [2, lineRefs],
     ]);
-    const bgRef = makeBgRef(null);
 
     // Seed the store with objects so clearObjects has something to clear
     usePlannerStore.getState().addObject({
@@ -280,7 +275,7 @@ describe("clearCanvas", () => {
       .getState()
       .addObject({ id: 2, type: "line", name: "L", lengthM: 3, color: "b" });
 
-    clearCanvas(canvas, refsRef, bgRef);
+    clearCanvas(canvas, refsRef);
 
     // All fabric objects should have been removed
     expect(canvas.remove).toHaveBeenCalled();
@@ -290,24 +285,11 @@ describe("clearCanvas", () => {
     expect(usePlannerStore.getState().objects.size).toBe(0);
   });
 
-  it("removes background image when present", () => {
-    const canvas = mockCanvas();
-    const refsRef = makeRefsRef();
-    const bgImage = { type: "image" } as any;
-    const bgRef = makeBgRef(bgImage);
-
-    clearCanvas(canvas, refsRef, bgRef);
-
-    expect(canvas.remove).toHaveBeenCalledWith(bgImage);
-    expect(bgRef.current).toBeNull();
-  });
-
   it("handles empty refs gracefully", () => {
     const canvas = mockCanvas();
     const refsRef = makeRefsRef();
-    const bgRef = makeBgRef(null);
 
-    clearCanvas(canvas, refsRef, bgRef);
+    clearCanvas(canvas, refsRef);
 
     expect(refsRef.current.size).toBe(0);
   });
@@ -316,9 +298,8 @@ describe("clearCanvas", () => {
     const canvas = mockCanvas();
     const shapeRefs = mockShapeRefs();
     const refsRef = makeRefsRef([[1, shapeRefs]]);
-    const bgRef = makeBgRef(null);
 
-    clearCanvas(canvas, refsRef, bgRef);
+    clearCanvas(canvas, refsRef);
 
     expect(canvas.remove).toHaveBeenCalledWith(shapeRefs.rect);
   });
@@ -327,9 +308,8 @@ describe("clearCanvas", () => {
     const canvas = mockCanvas();
     const lineRefs = mockLineRefs();
     const refsRef = makeRefsRef([[2, lineRefs]]);
-    const bgRef = makeBgRef(null);
 
-    clearCanvas(canvas, refsRef, bgRef);
+    clearCanvas(canvas, refsRef);
 
     expect(canvas.remove).toHaveBeenCalledWith(lineRefs.line);
   });
@@ -338,9 +318,8 @@ describe("clearCanvas", () => {
     const canvas = mockCanvas();
     const imgRefs = mockImageRefs();
     const refsRef = makeRefsRef([[3, imgRefs]]);
-    const bgRef = makeBgRef(null);
 
-    clearCanvas(canvas, refsRef, bgRef);
+    clearCanvas(canvas, refsRef);
 
     expect(canvas.remove).toHaveBeenCalledWith(imgRefs.image);
   });
@@ -465,18 +444,6 @@ describe("deleteObject", () => {
 // reorderObjects
 // ---------------------------------------------------------------------------
 describe("reorderObjects", () => {
-  it("moves background image to index 0", () => {
-    const canvas = mockCanvas();
-    const refsRef = makeRefsRef();
-    const bgImage = { type: "image" } as any;
-    const bgRef = makeBgRef(bgImage);
-
-    reorderObjects(canvas, refsRef, bgRef);
-
-    expect(canvas.moveObjectTo).toHaveBeenCalledWith(bgImage, 0);
-    expect(canvas.renderAll).toHaveBeenCalled();
-  });
-
   it("orders objects by layer: background group, then masks, then content", () => {
     const canvas = mockCanvas();
     const maskRefs = mockMaskRefs();
@@ -485,7 +452,6 @@ describe("reorderObjects", () => {
       [1, maskRefs],
       [2, imgRefs],
     ]);
-    const bgRef = makeBgRef(null);
 
     // Add to store — addObject auto-adds to the correct layer group
     usePlannerStore.getState().addObject({
@@ -496,7 +462,7 @@ describe("reorderObjects", () => {
     });
     usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
 
-    reorderObjects(canvas, refsRef, bgRef);
+    reorderObjects(canvas, refsRef);
 
     const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
     // backgroundImage object in background group first (index 0)
@@ -506,42 +472,11 @@ describe("reorderObjects", () => {
     expect(canvas.renderAll).toHaveBeenCalled();
   });
 
-  it("orders: bgRef (0), background group, masks group, content group", () => {
-    const canvas = mockCanvas();
-    const bgImage = { type: "image" } as any;
-    const maskRefs = mockMaskRefs();
-    const imgRefs = mockImageRefs();
-    const refsRef = makeRefsRef([
-      [1, maskRefs],
-      [2, imgRefs],
-    ]);
-    const bgRef = makeBgRef(bgImage);
-
-    usePlannerStore.getState().addObject({
-      id: 2,
-      type: "backgroundImage",
-      name: "BG",
-      imageData: "data:bg",
-    });
-    usePlannerStore.getState().addObject({ id: 1, type: "mask", name: "M" });
-
-    reorderObjects(canvas, refsRef, bgRef);
-
-    const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
-    // Untracked bgRef at 0
-    expect(calls[0]).toEqual([bgImage, 0]);
-    // backgroundImage object in background group at 1
-    expect(calls[1]).toEqual([imgRefs.image, 1]);
-    // mask in masks group at 2
-    expect(calls[2]).toEqual([maskRefs.rect, 2]);
-  });
-
   it("handles no background and no masks gracefully", () => {
     const canvas = mockCanvas();
     const refsRef = makeRefsRef();
-    const bgRef = makeBgRef(null);
 
-    reorderObjects(canvas, refsRef, bgRef);
+    reorderObjects(canvas, refsRef);
 
     expect(canvas.moveObjectTo).not.toHaveBeenCalled();
     expect(canvas.renderAll).toHaveBeenCalled();
@@ -555,7 +490,6 @@ describe("reorderObjects", () => {
       [1, shapeRefs],
       [2, lineRefs],
     ]);
-    const bgRef = makeBgRef(null);
 
     usePlannerStore.getState().addObject({
       id: 1,
@@ -569,7 +503,7 @@ describe("reorderObjects", () => {
       .getState()
       .addObject({ id: 2, type: "line", name: "L", lengthM: 3, color: "b" });
 
-    reorderObjects(canvas, refsRef, bgRef);
+    reorderObjects(canvas, refsRef);
 
     const calls = (canvas.moveObjectTo as ReturnType<typeof vi.fn>).mock.calls;
     // Shape: single rect at 0
@@ -587,7 +521,6 @@ describe("loadProjectFromData", () => {
   it("dispatches each object to the correct loader hook", async () => {
     const canvas = mockCanvas();
     const refsRef = makeRefsRef();
-    const bgRef = makeBgRef(null);
 
     const hooks = {
       loadShape: vi.fn(),
@@ -671,7 +604,7 @@ describe("loadProjectFromData", () => {
       },
     ];
 
-    await loadProjectFromData(objects, canvas, refsRef, bgRef, hooks);
+    await loadProjectFromData(objects, canvas, refsRef, hooks);
 
     expect(hooks.loadShape).toHaveBeenCalledTimes(1);
     expect(hooks.loadLine).toHaveBeenCalledTimes(1);
@@ -684,7 +617,6 @@ describe("loadProjectFromData", () => {
   it("calls reorder and renderAll after loading", async () => {
     const canvas = mockCanvas();
     const refsRef = makeRefsRef();
-    const bgRef = makeBgRef(null);
     const hooks = {
       loadShape: vi.fn(),
       loadLine: vi.fn(),
@@ -692,7 +624,7 @@ describe("loadProjectFromData", () => {
       loadImageObject: vi.fn().mockResolvedValue(undefined),
     };
 
-    await loadProjectFromData([], canvas, refsRef, bgRef, hooks);
+    await loadProjectFromData([], canvas, refsRef, hooks);
 
     // renderAll is called by both reorderObjects and loadProjectFromData itself
     expect(canvas.renderAll).toHaveBeenCalled();

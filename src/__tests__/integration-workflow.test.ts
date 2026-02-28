@@ -61,7 +61,6 @@ function captureSnapshot(
   return {
     storeSnapshot: {
       pixelsPerMeter: state.pixelsPerMeter,
-      backgroundImageRef: null,
       objects: JSON.parse(JSON.stringify(objects)),
       objectIdCounter: state.objectIdCounter,
     },
@@ -256,7 +255,6 @@ describe("Full user workflow integration", () => {
     // Apply the undo to the store
     store.getState().loadProject({
       pixelsPerMeter: undoResult1!.storeSnapshot.pixelsPerMeter,
-      backgroundImageData: null,
       objects: undoResult1!.storeSnapshot.objects,
     });
     expect(store.getState().objects.size).toBe(1);
@@ -277,7 +275,6 @@ describe("Full user workflow integration", () => {
     // Apply the redo to the store
     store.getState().loadProject({
       pixelsPerMeter: redoResult!.storeSnapshot.pixelsPerMeter,
-      backgroundImageData: null,
       objects: redoResult!.storeSnapshot.objects,
     });
     expect(store.getState().objects.size).toBe(3);
@@ -299,7 +296,6 @@ describe("Full user workflow integration", () => {
     // Simulate applying the replacement state
     store.getState().loadProject({
       pixelsPerMeter: 100,
-      backgroundImageData: null,
       objects: [replacementShape],
     });
 
@@ -326,23 +322,37 @@ describe("Full user workflow integration", () => {
 
     // ------------------------------------------------------------------
     // Step 5: Restore the full workspace for serialization
-    //         (3 objects: patio, fence, shed)
+    //         (4 objects: bg image, patio, fence, shed)
     // ------------------------------------------------------------------
+    const bgImageObj = {
+      id: 99,
+      type: "backgroundImage" as const,
+      name: "Background",
+      imageData: "data:image/png;base64,floorplan",
+    };
     store.getState().loadProject({
       pixelsPerMeter: 100,
-      backgroundImageData: "data:image/png;base64,floorplan",
-      objects: [patio, fence, shed],
+      objects: [bgImageObj, patio, fence, shed],
     });
 
     // ------------------------------------------------------------------
     // Step 6: Serialize project and verify round-trip fidelity
     // ------------------------------------------------------------------
+    // Add fabric state for the background image object
+    fabricStates[99] = {
+      left: 0,
+      top: 0,
+      scaleX: 1,
+      scaleY: 1,
+      angle: 0,
+      originX: "left",
+      originY: "top",
+    };
     const allObjects = Array.from(store.getState().objects.values());
     const getFabricState = makeFabricStateLookup(fabricStates);
 
     const serialized = serializeProject(
       store.getState().pixelsPerMeter,
-      store.getState().backgroundImageData,
       allObjects,
       getFabricState,
     );
@@ -350,8 +360,9 @@ describe("Full user workflow integration", () => {
     // Verify serialized structure
     expect(serialized.version).toBe(4);
     expect(serialized.pixelsPerMeter).toBe(100);
-    expect(serialized.backgroundImage).toBe("data:image/png;base64,floorplan");
-    expect(serialized.objects).toHaveLength(3);
+    expect(serialized.backgroundImage).toBeNull();
+    // 4 objects: bgImage + patio + fence + shed
+    expect(serialized.objects).toHaveLength(4);
     expect((serialized as SerializedProjectV4).metadata?.exportedFrom).toBe(
       "plan-the-space",
     );
@@ -392,10 +403,8 @@ describe("Full user workflow integration", () => {
     // Deserialize and verify round-trip fidelity
     const deserialized = deserializeProject(serialized);
     expect(deserialized.pixelsPerMeter).toBe(100);
-    expect(deserialized.backgroundImageData).toBe(
-      "data:image/png;base64,floorplan",
-    );
-    expect(deserialized.objects).toHaveLength(3);
+    // 4 objects: bgImage + patio + fence + shed
+    expect(deserialized.objects).toHaveLength(4);
 
     // Verify store-level object metadata survives the round-trip
     const dPatio = deserialized.objects.find((o) => o.name === "Patio");
@@ -434,10 +443,8 @@ describe("Full user workflow integration", () => {
     expect(loadedFromIDB).not.toBeNull();
     expect(loadedFromIDB!.version).toBe(4);
     expect(loadedFromIDB!.pixelsPerMeter).toBe(100);
-    expect(loadedFromIDB!.backgroundImage).toBe(
-      "data:image/png;base64,floorplan",
-    );
-    expect(loadedFromIDB!.objects).toHaveLength(3);
+    expect(loadedFromIDB!.backgroundImage).toBeNull();
+    expect(loadedFromIDB!.objects).toHaveLength(4);
 
     // Deserialize the IDB data and load into a fresh store (simulate page reload)
     const reloaded = deserializeProject(loadedFromIDB!);
@@ -446,22 +453,24 @@ describe("Full user workflow integration", () => {
 
     store.getState().loadProject({
       pixelsPerMeter: reloaded.pixelsPerMeter,
-      backgroundImageData: reloaded.backgroundImageData,
       objects: reloaded.objects,
     });
 
     // Verify restored state matches original
     expect(store.getState().pixelsPerMeter).toBe(100);
-    expect(store.getState().backgroundImageData).toBe(
-      "data:image/png;base64,floorplan",
-    );
-    expect(store.getState().objects.size).toBe(3);
+    // 4 objects: bgImage + patio + fence + shed
+    expect(store.getState().objects.size).toBe(4);
     expect(store.getState().objects.get(patioId)?.name).toBe("Patio");
     expect(store.getState().objects.get(fenceId)?.name).toBe("Fence");
     expect(store.getState().objects.get(shedId)?.name).toBe("Shed");
+    // Background image is now a regular object
+    const bgObj = Array.from(store.getState().objects.values()).find(
+      (o) => o.type === "backgroundImage",
+    );
+    expect(bgObj).toBeDefined();
 
-    // objectIdCounter should be set to max(id) + 1
-    expect(store.getState().objectIdCounter).toBe(3);
+    // objectIdCounter should be set to max(id) + 1 (bgImageObj has id 99)
+    expect(store.getState().objectIdCounter).toBe(100);
 
     // Verify the visible objects selector still works after reload
     const reloadedVisible = selectVisibleObjects(store.getState());
@@ -505,7 +514,6 @@ describe("Full user workflow integration", () => {
     const updatedObjects = Array.from(store.getState().objects.values());
     const updatedSerialized = serializeProject(
       store.getState().pixelsPerMeter,
-      store.getState().backgroundImageData,
       updatedObjects,
       getFabricState,
     );

@@ -2,13 +2,12 @@
  * @module autoSave
  * @description Provides debounced auto-save to IndexedDB and a best-effort save on page unload.
  * Reads current Zustand store state at execution time to serialize the project before persisting.
- * @dependencies constants (AUTOSAVE_DEBOUNCE_MS), store (autoSaveEnabled, objects, pixelsPerMeter, backgroundImageData), canvasOrchestration (FabricStateResult)
+ * @dependencies constants (AUTOSAVE_DEBOUNCE_MS), store (autoSaveEnabled, objects, pixelsPerMeter), canvasOrchestration (FabricStateResult)
  * @usage Called from PlannerCanvas to schedule auto-saves after canvas mutations, and registered as a beforeunload handler for safety saves.
  */
 import type {
   PlannerObject,
   SerializedProject,
-  BackgroundImagePosition,
   Camera,
   LayerGroup,
   LayerEntry,
@@ -23,10 +22,8 @@ export type GetFabricStateFn = (id: number) => FabricStateResult;
 /** Signature for the serializeProject function */
 export type SerializeProjectFn = (
   pixelsPerMeter: number | null,
-  backgroundImageData: string | null,
   objects: PlannerObject[],
   getFabricState: (id: number) => FabricStateResult,
-  backgroundImagePosition?: BackgroundImagePosition | null,
   camera?: Camera | null,
   layers?: Record<LayerGroup, LayerEntry[]> | null,
 ) => SerializedProject;
@@ -40,7 +37,6 @@ export interface ScheduleAutoSaveOptions {
   getFabricState: GetFabricStateFn;
   serializeProject: SerializeProjectFn;
   saveToIDB: SaveToIDBFn;
-  getBackgroundPosition?: () => BackgroundImagePosition | null;
 }
 
 /**
@@ -49,14 +45,8 @@ export interface ScheduleAutoSaveOptions {
  * at execution time (inside the timer).
  */
 export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
-  const {
-    isRestoring,
-    timerRef,
-    getFabricState,
-    serializeProject,
-    saveToIDB,
-    getBackgroundPosition,
-  } = options;
+  const { isRestoring, timerRef, getFabricState, serializeProject, saveToIDB } =
+    options;
   if (isRestoring) return;
   const store = usePlannerStore.getState();
   if (!store.autoSaveEnabled) return;
@@ -67,10 +57,8 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
       const objects = Array.from(s.objects.values());
       const data = serializeProject(
         s.pixelsPerMeter,
-        s.backgroundImageData,
         objects,
         (id) => getFabricState(id),
-        getBackgroundPosition?.(),
         s.camera,
         s.layers,
       );
@@ -91,7 +79,6 @@ export function handleBeforeUnload(
   getFabricState: GetFabricStateFn,
   serializeProject: SerializeProjectFn,
   saveToIDB: SaveToIDBFn,
-  getBackgroundPosition?: () => BackgroundImagePosition | null,
 ): void {
   const s = usePlannerStore.getState();
   if (!s.autoSaveEnabled) return;
@@ -100,10 +87,8 @@ export function handleBeforeUnload(
   if (objects.length === 0 && s.pixelsPerMeter === null) return;
   const data = serializeProject(
     s.pixelsPerMeter,
-    s.backgroundImageData,
     objects,
     getFabricState,
-    getBackgroundPosition?.(),
     s.camera,
     s.layers,
   );

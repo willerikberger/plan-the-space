@@ -38,13 +38,11 @@ import type {
 
 function makeSnapshot(overrides?: {
   objects?: StoreSnapshot["objects"];
-  backgroundImageRef?: string | null;
   fabricSnapshots?: FabricObjectSnapshot[];
 }): HistorySnapshot {
   return {
     storeSnapshot: {
       pixelsPerMeter: 50,
-      backgroundImageRef: overrides?.backgroundImageRef ?? null,
       objects: overrides?.objects ?? [],
       objectIdCounter: 0,
     },
@@ -104,7 +102,6 @@ describe("Store actions with invalid input", () => {
   it("loadProject with empty objects array creates empty map", () => {
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: 100,
-      backgroundImageData: "data:test",
       objects: [],
     });
     const state = usePlannerStore.getState();
@@ -116,12 +113,10 @@ describe("Store actions with invalid input", () => {
   it("loadProject with null pixelsPerMeter preserves null", () => {
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: null,
-      backgroundImageData: null,
       objects: [],
     });
     const state = usePlannerStore.getState();
     expect(state.pixelsPerMeter).toBeNull();
-    expect(state.backgroundImageData).toBeNull();
   });
 
   it("clearObjects with empty type filter array is a no-op", () => {
@@ -278,7 +273,6 @@ describe("deserializeProject with edge cases", () => {
       objects: [],
     };
     const result = deserializeProject(project);
-    expect(result.backgroundImageData).toBeNull();
     expect(result.pixelsPerMeter).toBeNull();
     expect(result.objects).toHaveLength(0);
   });
@@ -394,7 +388,7 @@ describe("serializeProject with edge cases", () => {
       lengthM: 5,
       color: "blue",
     };
-    const project = serializeProject(50, null, [shape, line], (id) => {
+    const project = serializeProject(50, [shape, line], (id) => {
       // Only return fabric state for the shape, line returns null
       if (id === 0) {
         return {
@@ -417,7 +411,7 @@ describe("serializeProject with edge cases", () => {
   });
 
   it("serializes project with empty objects array", () => {
-    const project = serializeProject(null, null, [], () => null);
+    const project = serializeProject(null, [], () => null);
     expect(project.version).toBe(4);
     expect(project.objects).toHaveLength(0);
     expect(project.pixelsPerMeter).toBeNull();
@@ -836,11 +830,22 @@ describe("HistoryManager releases images from discarded snapshots", () => {
     const ref = await manager.registerImage(imgData);
 
     const snap1 = makeSnapshot();
-    const snap2 = makeSnapshot({ backgroundImageRef: ref });
+    // Simulate a snapshot with a backgroundImage object whose imageDataRef was registered
+    const snap2 = makeSnapshot({
+      objects: [
+        {
+          id: 100,
+          type: "backgroundImage",
+          name: "BG",
+          imageData: imgData,
+          imageDataRef: ref,
+        } as unknown as StoreSnapshot["objects"][number],
+      ],
+    });
     const snap3 = makeSnapshot();
 
     manager.push(snap1);
-    manager.push(snap2); // contains image ref
+    manager.push(snap2); // contains image ref via object
     manager.push(snap3);
 
     // Undo past the snapshot with the image ref
@@ -848,7 +853,6 @@ describe("HistoryManager releases images from discarded snapshots", () => {
     manager.undo(); // back to snap1
 
     // Push new snapshot -- snap2 and snap3 are discarded
-    // snap2 had a backgroundImageRef, so releaseImage should be called
     manager.push(makeSnapshot());
 
     // The manager should have released the image ref.

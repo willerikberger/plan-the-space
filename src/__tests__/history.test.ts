@@ -18,13 +18,11 @@ import type {
 
 function makeSnapshot(overrides?: {
   objects?: StoreSnapshot["objects"];
-  backgroundImageRef?: string | null;
   fabricSnapshots?: FabricObjectSnapshot[];
 }): HistorySnapshot {
   return {
     storeSnapshot: {
       pixelsPerMeter: 50,
-      backgroundImageRef: overrides?.backgroundImageRef ?? null,
       objects: overrides?.objects ?? [],
       objectIdCounter: 0,
     },

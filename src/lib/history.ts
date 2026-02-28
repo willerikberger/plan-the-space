@@ -289,10 +289,6 @@ export class HistoryManager {
   // ============================================
 
   private releaseSnapshotImages(snapshot: HistorySnapshot): void {
-    const bgRef = snapshot.storeSnapshot.backgroundImageRef;
-    if (bgRef) {
-      this.pool.releaseImage(bgRef).catch(() => {});
-    }
     // Release image refs from overlay/background image objects
     for (const obj of snapshot.storeSnapshot.objects) {
       const o = obj as unknown as Record<string, unknown>;

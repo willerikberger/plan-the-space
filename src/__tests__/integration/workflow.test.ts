@@ -91,7 +91,6 @@ function captureStoreSnapshot(
 
   const storeSnapshot: StoreSnapshot = {
     pixelsPerMeter: state.pixelsPerMeter,
-    backgroundImageRef: null,
     objects: structuredClone(objects),
     objectIdCounter: state.objectIdCounter,
   };
@@ -134,18 +133,26 @@ beforeEach(() => {
 describe("Full workflow integration: store -> history -> serialization", () => {
   it("exercises the complete user workflow through data layer", () => {
     // ----- Step 1: Load a project into the store -----
-    const initialObjects: PlannerObject[] = [];
+    const bgImageObj = {
+      id: 99,
+      type: "backgroundImage" as const,
+      name: "Background",
+      imageData: "data:image/png;base64,fakebgimage",
+    };
+    const initialObjects: PlannerObject[] = [bgImageObj];
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: null,
-      backgroundImageData: "data:image/png;base64,fakebgimage",
       objects: initialObjects,
     });
 
     let state = usePlannerStore.getState();
     expect(state.mode).toBe("normal");
     expect(state.pixelsPerMeter).toBeNull();
-    expect(state.backgroundImageData).toBe("data:image/png;base64,fakebgimage");
-    expect(state.objects.size).toBe(0);
+    // Background image is now a regular object
+    const bgObj = state.objects.get(99);
+    expect(bgObj).toBeDefined();
+    expect(bgObj?.type).toBe("backgroundImage");
+    expect(state.objects.size).toBe(1);
 
     // ----- Step 2: Simulate calibration (set pixelsPerMeter) -----
     usePlannerStore.getState().setPixelsPerMeter(75);
@@ -165,7 +172,7 @@ describe("Full workflow integration: store -> history -> serialization", () => {
     usePlannerStore.getState().addObject(shape);
 
     state = usePlannerStore.getState();
-    expect(state.objects.size).toBe(1);
+    expect(state.objects.size).toBe(2); // bgImage + shape
     const addedShape = state.objects.get(shapeId);
     expect(addedShape).toBeDefined();
     expect(addedShape?.type).toBe("shape");
@@ -175,7 +182,7 @@ describe("Full workflow integration: store -> history -> serialization", () => {
       expect(addedShape.heightM).toBe(4);
     }
 
-    // Verify selector works
+    // Verify selector works (backgroundImage is not visible)
     const visible = selectVisibleObjects(state);
     expect(visible).toHaveLength(1);
     expect(visible[0].id).toBe(shapeId);
@@ -195,10 +202,11 @@ describe("Full workflow integration: store -> history -> serialization", () => {
     expect(stackState.canRedo).toBe(false);
     expect(
       getCurrentSnapshot(historyStack)?.storeSnapshot.objects,
-    ).toHaveLength(1);
-    expect(
-      getCurrentSnapshot(historyStack)?.storeSnapshot.objects[0].name,
-    ).toBe("Living Room");
+    ).toHaveLength(2); // bgImage + shape
+    const snapshotShape = getCurrentSnapshot(
+      historyStack,
+    )?.storeSnapshot.objects.find((o) => o.type === "shape");
+    expect(snapshotShape?.name).toBe("Living Room");
 
     // ----- Step 5: Modify the shape -----
     usePlannerStore.getState().updateObject(shapeId, { name: "Kitchen" });
@@ -214,9 +222,10 @@ describe("Full workflow integration: store -> history -> serialization", () => {
     expect(stackState.canUndo).toBe(true); // Now 2 entries, can undo
     expect(stackState.canRedo).toBe(false);
     expect(stackState.undoCount).toBe(1);
-    expect(
-      getCurrentSnapshot(historyStack)?.storeSnapshot.objects[0].name,
-    ).toBe("Kitchen");
+    const currentSnapshotShape = getCurrentSnapshot(
+      historyStack,
+    )?.storeSnapshot.objects.find((o) => o.type === "shape");
+    expect(currentSnapshotShape?.name).toBe("Kitchen");
 
     // ----- Step 6: Test undo -----
     const undoResult = undoStack(historyStack);
@@ -228,7 +237,7 @@ describe("Full workflow integration: store -> history -> serialization", () => {
 
     // ----- Step 7: Verify state matches step 3 after undo -----
     state = usePlannerStore.getState();
-    expect(state.objects.size).toBe(1);
+    expect(state.objects.size).toBe(2); // bgImage + shape
     const restoredShape = state.objects.get(shapeId);
     expect(restoredShape?.name).toBe("Living Room"); // Back to original name
     if (restoredShape?.type === "shape") {
@@ -262,57 +271,69 @@ describe("Full workflow integration: store -> history -> serialization", () => {
       }),
     );
 
+    // Add fabric state for the background image object
+    fabricLookup.set(99, {
+      left: 0,
+      top: 0,
+      scaleX: 1,
+      scaleY: 1,
+      angle: 0,
+      originX: "left",
+      originY: "top",
+    } as unknown as ReturnType<typeof mockShapeFabricState>);
+
     const objects = Array.from(state.objects.values());
     const exportedProject = serializeProject(
       state.pixelsPerMeter,
-      state.backgroundImageData,
       objects,
       (id) => fabricLookup.get(id) ?? null,
     );
 
     expect(exportedProject.version).toBe(4);
     expect(exportedProject.pixelsPerMeter).toBe(75);
-    expect(exportedProject.backgroundImage).toBe(
-      "data:image/png;base64,fakebgimage",
+    expect(exportedProject.backgroundImage).toBeNull();
+    // 2 objects: bgImage + shape
+    expect(exportedProject.objects).toHaveLength(2);
+    const exportedShape = exportedProject.objects.find(
+      (o) => o.type === "shape",
     );
-    expect(exportedProject.objects).toHaveLength(1);
-    expect(exportedProject.objects[0].type).toBe("shape");
-    expect(exportedProject.objects[0].name).toBe("Living Room");
+    expect(exportedShape).toBeDefined();
+    expect(exportedShape!.name).toBe("Living Room");
     expect(validateProjectData(exportedProject)).toBe(true);
 
     // Verify shape-specific serialized fields
-    const serializedShape = exportedProject.objects[0];
-    if (serializedShape.type === "shape") {
-      expect(serializedShape.widthM).toBe(5);
-      expect(serializedShape.heightM).toBe(4);
-      expect(serializedShape.left).toBe(120);
-      expect(serializedShape.top).toBe(250);
-      expect(serializedShape.baseWidthPx).toBe(375);
-      expect(serializedShape.baseHeightPx).toBe(300);
+    if (exportedShape!.type === "shape") {
+      expect(exportedShape!.widthM).toBe(5);
+      expect(exportedShape!.heightM).toBe(4);
+      expect(exportedShape!.left).toBe(120);
+      expect(exportedShape!.top).toBe(250);
+      expect(exportedShape!.baseWidthPx).toBe(375);
+      expect(exportedShape!.baseHeightPx).toBe(300);
     }
 
     // ----- Step 9: Import JSON and verify round-trip integrity -----
     const imported = deserializeProject(exportedProject);
 
     expect(imported.pixelsPerMeter).toBe(75);
-    expect(imported.backgroundImageData).toBe(
-      "data:image/png;base64,fakebgimage",
-    );
-    expect(imported.objects).toHaveLength(1);
+    // 2 objects: bgImage + shape
+    expect(imported.objects).toHaveLength(2);
 
-    const importedShape = imported.objects[0];
-    expect(importedShape.type).toBe("shape");
-    expect(importedShape.name).toBe("Living Room");
-    if (importedShape.type === "shape") {
-      expect(importedShape.widthM).toBe(5);
-      expect(importedShape.heightM).toBe(4);
-      expect(importedShape.color).toBe("rgba(76, 175, 80, 0.6)");
+    const importedShape = imported.objects.find((o) => o.type === "shape");
+    expect(importedShape).toBeDefined();
+    expect(importedShape!.type).toBe("shape");
+    expect(importedShape!.name).toBe("Living Room");
+    if (importedShape!.type === "shape") {
+      expect(importedShape!.widthM).toBe(5);
+      expect(importedShape!.heightM).toBe(4);
+      expect(importedShape!.color).toBe("rgba(76, 175, 80, 0.6)");
     }
 
     // Verify serialized objects preserve Fabric positioning data
-    expect(imported.serializedObjects).toHaveLength(1);
-    const importedSerializedShape = imported.serializedObjects[0];
-    if (importedSerializedShape.type === "shape") {
+    expect(imported.serializedObjects).toHaveLength(2);
+    const importedSerializedShape = imported.serializedObjects.find(
+      (o) => o.type === "shape",
+    );
+    if (importedSerializedShape?.type === "shape") {
       expect(importedSerializedShape.left).toBe(120);
       expect(importedSerializedShape.top).toBe(250);
     }
@@ -320,15 +341,18 @@ describe("Full workflow integration: store -> history -> serialization", () => {
     // Load imported data back into the store
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: imported.pixelsPerMeter,
-      backgroundImageData: imported.backgroundImageData,
       objects: imported.objects,
     });
 
     state = usePlannerStore.getState();
     expect(state.pixelsPerMeter).toBe(75);
-    expect(state.backgroundImageData).toBe("data:image/png;base64,fakebgimage");
-    expect(state.objects.size).toBe(1);
+    expect(state.objects.size).toBe(2); // bgImage + shape
     expect(state.objects.get(shapeId)?.name).toBe("Living Room");
+    // Background image is a regular object
+    const reloadedBg = Array.from(state.objects.values()).find(
+      (o) => o.type === "backgroundImage",
+    );
+    expect(reloadedBg).toBeDefined();
   });
 });
 
@@ -440,9 +464,6 @@ describe("Multi-object workflow with redo and history truncation", () => {
 describe("Serialization round-trip with multiple object types", () => {
   it("preserves shapes and lines through serialize -> deserialize -> reload", () => {
     usePlannerStore.getState().setPixelsPerMeter(50);
-    usePlannerStore
-      .getState()
-      .setBackgroundImageData("data:image/png;base64,bg");
 
     const shapeId = usePlannerStore.getState().nextObjectId();
     const shape: ShapeObject = {
@@ -510,12 +531,11 @@ describe("Serialization round-trip with multiple object types", () => {
 
     const project = serializeProject(
       state.pixelsPerMeter,
-      state.backgroundImageData,
       objects,
       (id) =>
         (fabricLookup.get(id) as Parameters<
           typeof serializeProject
-        >[3] extends (id: number) => infer R
+        >[2] extends (id: number) => infer R
           ? NonNullable<R>
           : never) ?? null,
     );
@@ -550,13 +570,11 @@ describe("Serialization round-trip with multiple object types", () => {
     const imported = deserializeProject(project);
     expect(imported.objects).toHaveLength(3);
     expect(imported.pixelsPerMeter).toBe(50);
-    expect(imported.backgroundImageData).toBe("data:image/png;base64,bg");
 
     // Reset store and reload
     usePlannerStore.getState().reset();
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: imported.pixelsPerMeter,
-      backgroundImageData: imported.backgroundImageData,
       objects: imported.objects,
     });
 
@@ -670,7 +688,7 @@ describe("Edge cases", () => {
   });
 
   it("export empty project serializes correctly", () => {
-    const project = serializeProject(null, null, [], () => null);
+    const project = serializeProject(null, [], () => null);
     expect(project.version).toBe(4);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
@@ -680,13 +698,11 @@ describe("Edge cases", () => {
     const imported = deserializeProject(project);
     expect(imported.objects).toHaveLength(0);
     expect(imported.pixelsPerMeter).toBeNull();
-    expect(imported.backgroundImageData).toBeNull();
   });
 
   it("loadProject sets objectIdCounter past highest object id", () => {
     usePlannerStore.getState().loadProject({
       pixelsPerMeter: 50,
-      backgroundImageData: null,
       objects: [
         { id: 10, type: "shape", name: "A", widthM: 1, heightM: 1, color: "r" },
         { id: 3, type: "line", name: "B", lengthM: 2, color: "b" },

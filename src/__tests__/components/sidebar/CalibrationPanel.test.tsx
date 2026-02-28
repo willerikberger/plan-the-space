@@ -14,7 +14,7 @@ const mockUsePlannerStore = usePlannerStore as unknown as ReturnType<
 function setupStoreMock(overrides: Record<string, unknown> = {}) {
   const state: Record<string, unknown> = {
     mode: "normal",
-    backgroundImageData: null,
+    objects: new Map(),
     showCalibrationInput: false,
     ...overrides,
   };
@@ -57,7 +57,20 @@ describe("CalibrationPanel", () => {
   // Start Calibration button (normal mode)
   // --------------------------------------------------
   it('shows "Start Calibration" button in normal mode', () => {
-    setupStoreMock({ mode: "normal", backgroundImageData: "data:test" });
+    setupStoreMock({
+      mode: "normal",
+      objects: new Map([
+        [
+          0,
+          {
+            id: 0,
+            type: "backgroundImage",
+            name: "BG",
+            imageData: "data:test",
+          },
+        ],
+      ]),
+    });
     render(<CalibrationPanel {...defaultProps} />);
     const btn = screen.getByRole("button", { name: "Start Calibration" });
     expect(btn).toBeInTheDocument();
@@ -65,14 +78,27 @@ describe("CalibrationPanel", () => {
   });
 
   it('disables "Start Calibration" when no background image', () => {
-    setupStoreMock({ mode: "normal", backgroundImageData: null });
+    setupStoreMock({ mode: "normal", objects: new Map() });
     render(<CalibrationPanel {...defaultProps} />);
     const btn = screen.getByRole("button", { name: "Start Calibration" });
     expect(btn).toBeDisabled();
   });
 
   it("calls onStartCalibration when button clicked", () => {
-    setupStoreMock({ mode: "normal", backgroundImageData: "data:test" });
+    setupStoreMock({
+      mode: "normal",
+      objects: new Map([
+        [
+          0,
+          {
+            id: 0,
+            type: "backgroundImage",
+            name: "BG",
+            imageData: "data:test",
+          },
+        ],
+      ]),
+    });
     render(<CalibrationPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: "Start Calibration" }));
     expect(defaultProps.onStartCalibration).toHaveBeenCalledTimes(1);
