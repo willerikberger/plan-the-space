@@ -9,9 +9,12 @@ import type {
   ObjectsSlice,
   UISlice,
   HistorySlice,
+  LayerSlice,
+  LayerGroup,
+  LayerEntry,
   Camera,
 } from "./types";
-import { canTransitionMode } from "./types";
+import { canTransitionMode, layerGroupForType } from "./types";
 import { SHAPE_COLORS, LINE_COLORS, DEFAULTS } from "./constants";
 
 // ============================================
@@ -91,13 +94,32 @@ const createObjectsSlice: StoreSliceCreator<ObjectsSlice> = (set, get) => ({
     set((state) => {
       const next = new Map(state.objects);
       next.set(obj.id, obj);
-      return { objects: next };
+      // Also add to the correct layer group
+      const group = layerGroupForType(obj.type);
+      const entries = state.layers[group];
+      const maxZ =
+        entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
+      return {
+        objects: next,
+        layers: {
+          ...state.layers,
+          [group]: [...entries, { objectId: obj.id, zIndex: maxZ + 1 }],
+        },
+      };
     }),
   removeObject: (id) =>
     set((state) => {
       const next = new Map(state.objects);
       next.delete(id);
-      return { objects: next };
+      // Also remove from layers
+      return {
+        objects: next,
+        layers: {
+          background: state.layers.background.filter((e) => e.objectId !== id),
+          masks: state.layers.masks.filter((e) => e.objectId !== id),
+          content: state.layers.content.filter((e) => e.objectId !== id),
+        },
+      };
     }),
   updateObject: (id, partial) =>
     set((state) => {
@@ -110,15 +132,31 @@ const createObjectsSlice: StoreSliceCreator<ObjectsSlice> = (set, get) => ({
   clearObjects: (typesToClear) =>
     set((state) => {
       if (!typesToClear) {
-        return { objects: new Map() };
+        return {
+          objects: new Map(),
+          layers: { background: [], masks: [], content: [] },
+        };
       }
       const next = new Map(state.objects);
+      const removedIds = new Set<number>();
       for (const [id, obj] of next) {
         if (typesToClear.includes(obj.type)) {
           next.delete(id);
+          removedIds.add(id);
         }
       }
-      return { objects: next };
+      return {
+        objects: next,
+        layers: {
+          background: state.layers.background.filter(
+            (e) => !removedIds.has(e.objectId),
+          ),
+          masks: state.layers.masks.filter((e) => !removedIds.has(e.objectId)),
+          content: state.layers.content.filter(
+            (e) => !removedIds.has(e.objectId),
+          ),
+        },
+      };
     }),
   nextObjectId: () => {
     const id = get().objectIdCounter;
@@ -158,6 +196,98 @@ const createHistorySlice: StoreSliceCreator<HistorySlice> = (set) => ({
 });
 
 // ============================================
+// Layer slice
+// ============================================
+const emptyLayers: Record<LayerGroup, LayerEntry[]> = {
+  background: [],
+  masks: [],
+  content: [],
+};
+
+const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
+  layers: { ...emptyLayers, background: [], masks: [], content: [] },
+
+  addToLayer: (objectId, group) =>
+    set((state) => {
+      const entries = state.layers[group];
+      const maxZ =
+        entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
+      return {
+        layers: {
+          ...state.layers,
+          [group]: [...entries, { objectId, zIndex: maxZ + 1 }],
+        },
+      };
+    }),
+
+  removeFromLayer: (objectId) =>
+    set((state) => {
+      const next: Record<LayerGroup, LayerEntry[]> = {
+        background: state.layers.background.filter(
+          (e) => e.objectId !== objectId,
+        ),
+        masks: state.layers.masks.filter((e) => e.objectId !== objectId),
+        content: state.layers.content.filter((e) => e.objectId !== objectId),
+      };
+      return { layers: next };
+    }),
+
+  moveUpInLayer: (objectId) =>
+    set((state) => {
+      for (const group of ["background", "masks", "content"] as const) {
+        const entries = [...state.layers[group]];
+        const sorted = entries.sort((a, b) => a.zIndex - b.zIndex);
+        const idx = sorted.findIndex((e) => e.objectId === objectId);
+        if (idx === -1) continue;
+        if (idx >= sorted.length - 1) return state; // already at top
+        // Swap zIndex with the entry above
+        const temp = sorted[idx].zIndex;
+        sorted[idx] = { ...sorted[idx], zIndex: sorted[idx + 1].zIndex };
+        sorted[idx + 1] = { ...sorted[idx + 1], zIndex: temp };
+        return {
+          layers: { ...state.layers, [group]: sorted },
+        };
+      }
+      return state;
+    }),
+
+  moveDownInLayer: (objectId) =>
+    set((state) => {
+      for (const group of ["background", "masks", "content"] as const) {
+        const entries = [...state.layers[group]];
+        const sorted = entries.sort((a, b) => a.zIndex - b.zIndex);
+        const idx = sorted.findIndex((e) => e.objectId === objectId);
+        if (idx === -1) continue;
+        if (idx <= 0) return state; // already at bottom
+        // Swap zIndex with the entry below
+        const temp = sorted[idx].zIndex;
+        sorted[idx] = { ...sorted[idx], zIndex: sorted[idx - 1].zIndex };
+        sorted[idx - 1] = { ...sorted[idx - 1], zIndex: temp };
+        return {
+          layers: { ...state.layers, [group]: sorted },
+        };
+      }
+      return state;
+    }),
+
+  getRenderOrder: () => {
+    const state = get();
+    const sortByZ = (entries: LayerEntry[]) =>
+      [...entries].sort((a, b) => a.zIndex - b.zIndex).map((e) => e.objectId);
+    return [
+      ...sortByZ(state.layers.background),
+      ...sortByZ(state.layers.masks),
+      ...sortByZ(state.layers.content),
+    ];
+  },
+
+  clearLayers: () =>
+    set({
+      layers: { background: [], masks: [], content: [] },
+    }),
+});
+
+// ============================================
 // Composed store
 // ============================================
 export const usePlannerStore = create<PlannerStore>()((...a) => ({
@@ -165,6 +295,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   ...createObjectsSlice(...a),
   ...createUISlice(...a),
   ...createHistorySlice(...a),
+  ...createLayerSlice(...a),
 
   // Cross-slice actions
   loadProject: ({ pixelsPerMeter, backgroundImageData, objects }) => {
@@ -191,6 +322,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
       ...initialObjectsState,
       ...initialUIState,
       historyState: initialHistoryState,
+      layers: { background: [], masks: [], content: [] },
       objects: new Map(),
     });
   },

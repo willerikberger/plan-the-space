@@ -419,17 +419,58 @@ export interface HistorySliceActions {
 export type HistorySlice = HistorySliceState & HistorySliceActions;
 
 // ============================================
+// Layer system
+// ============================================
+export type LayerGroup = "background" | "masks" | "content";
+
+export interface LayerEntry {
+  objectId: number;
+  zIndex: number; // ordering within the group
+}
+
+export interface LayerSliceState {
+  layers: Record<LayerGroup, LayerEntry[]>;
+}
+
+export interface LayerSliceActions {
+  addToLayer: (objectId: number, group: LayerGroup) => void;
+  removeFromLayer: (objectId: number) => void;
+  moveUpInLayer: (objectId: number) => void;
+  moveDownInLayer: (objectId: number) => void;
+  getRenderOrder: () => number[]; // flat array of objectIds in render order
+  clearLayers: () => void;
+}
+
+export type LayerSlice = LayerSliceState & LayerSliceActions;
+
+/** Determine which layer group an object type belongs to */
+export function layerGroupForType(type: ObjectType): LayerGroup {
+  switch (type) {
+    case "backgroundImage":
+      return "background";
+    case "mask":
+      return "masks";
+    case "shape":
+    case "line":
+    case "overlayImage":
+      return "content";
+  }
+}
+
+// ============================================
 // Compound store types (backward compat)
 // ============================================
 export type PlannerState = CanvasSliceState &
   ObjectsSliceState &
   UISliceState &
-  HistorySliceState;
+  HistorySliceState &
+  LayerSliceState;
 
 export type PlannerActions = CanvasSliceActions &
   ObjectsSliceActions &
   UISliceActions &
-  HistorySliceActions & {
+  HistorySliceActions &
+  LayerSliceActions & {
     loadProject: (data: {
       pixelsPerMeter: number | null;
       backgroundImageData: string | null;
