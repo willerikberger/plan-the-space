@@ -472,6 +472,25 @@ export function layerGroupForType(type: ObjectType): LayerGroup {
 }
 
 // ============================================
+// Multi-project types
+// ============================================
+
+export interface ProjectRecord {
+  id: string; // UUID
+  name: string;
+  description?: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  deletedAt: string | null; // ISO 8601 or null
+  thumbnailDataUrl: string | null;
+  projectData: SerializedProject;
+}
+
+export interface AppState {
+  lastOpenedProjectId: string | null;
+}
+
+// ============================================
 // Compound store types (backward compat)
 // ============================================
 export type PlannerState = CanvasSliceState &
