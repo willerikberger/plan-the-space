@@ -494,7 +494,7 @@ export interface AppState {
 // Project slice (multi-project management)
 // ============================================
 
-export type ActiveView = "picker" | "canvas" | "wizard";
+export type ActiveView = "picker" | "canvas";
 
 export interface ProjectListItem {
   id: string;

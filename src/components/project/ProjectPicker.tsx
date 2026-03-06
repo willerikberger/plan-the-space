@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Trash2, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "./ProjectCard";
@@ -29,14 +29,21 @@ export function ProjectPicker({
 }: ProjectPickerProps) {
   const [trashOpen, setTrashOpen] = useState(false);
 
-  const activeProjects = projects
-    .filter((p) => !p.deletedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+  const activeProjects = useMemo(
+    () =>
+      projects
+        .filter((p) => !p.deletedAt)
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        ),
+    [projects],
+  );
 
-  const trashedProjects = projects.filter((p) => p.deletedAt);
+  const trashedProjects = useMemo(
+    () => projects.filter((p) => p.deletedAt),
+    [projects],
+  );
 
   return (
     <div className="h-screen bg-planner-bg flex flex-col">

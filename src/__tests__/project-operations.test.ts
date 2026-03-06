@@ -7,23 +7,18 @@ import {
   saveCurrentProject,
   openProject,
   duplicateProject,
-  softDeleteProjectOp,
-  permanentDeleteProjectOp,
-  restoreProjectOp,
+  softDeleteProject,
+  permanentDeleteProject,
+  restoreProject,
   renameProject,
   initializeApp,
   importJsonAsProject,
 } from "@/lib/projectOperations";
 import { createProjectRecord } from "@/lib/projectRecord";
 import type { SerializedProject } from "@/lib/types";
+import { createEmptyProjectData } from "./helpers/fixtures";
 
-const emptyProjectData: SerializedProject = {
-  version: 4,
-  pixelsPerMeter: null,
-  backgroundImage: null,
-  savedAt: new Date().toISOString(),
-  objects: [],
-};
+const emptyProjectData = createEmptyProjectData();
 
 let adapter: StorageAdapter;
 
@@ -132,10 +127,10 @@ describe("duplicateProject", () => {
   });
 });
 
-describe("softDeleteProjectOp / permanentDeleteProjectOp / restoreProjectOp", () => {
+describe("softDeleteProject / permanentDeleteProject / restoreProject", () => {
   it("soft delete marks deletedAt in adapter and store", async () => {
     const id = await createProject(adapter, { name: "Doomed" });
-    await softDeleteProjectOp(adapter, id);
+    await softDeleteProject(adapter, id);
 
     const record = await adapter.loadProjectRecord(id);
     expect(record!.deletedAt).toBeTruthy();
@@ -144,7 +139,7 @@ describe("softDeleteProjectOp / permanentDeleteProjectOp / restoreProjectOp", ()
 
   it("permanent delete removes from both", async () => {
     const id = await createProject(adapter, { name: "Gone" });
-    await permanentDeleteProjectOp(adapter, id);
+    await permanentDeleteProject(adapter, id);
 
     const record = await adapter.loadProjectRecord(id);
     expect(record).toBeNull();
@@ -153,8 +148,8 @@ describe("softDeleteProjectOp / permanentDeleteProjectOp / restoreProjectOp", ()
 
   it("restore clears deletedAt", async () => {
     const id = await createProject(adapter, { name: "Saved" });
-    await softDeleteProjectOp(adapter, id);
-    await restoreProjectOp(adapter, id);
+    await softDeleteProject(adapter, id);
+    await restoreProject(adapter, id);
 
     const record = await adapter.loadProjectRecord(id);
     expect(record!.deletedAt).toBeNull();

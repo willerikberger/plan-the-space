@@ -23,13 +23,15 @@ function toListItem(r: ProjectRecord): ProjectListItem {
   };
 }
 
-const emptyProjectData: SerializedProject = {
-  version: 4,
-  pixelsPerMeter: null,
-  backgroundImage: null,
-  savedAt: new Date().toISOString(),
-  objects: [],
-};
+function createEmptyProjectData(): SerializedProject {
+  return {
+    version: 4,
+    pixelsPerMeter: null,
+    backgroundImage: null,
+    savedAt: new Date().toISOString(),
+    objects: [],
+  };
+}
 
 /** Create a new empty project, save it, and switch to it */
 export async function createProject(
@@ -39,7 +41,7 @@ export async function createProject(
   const record = createProjectRecord({
     name: opts.name,
     description: opts.description,
-    projectData: { ...emptyProjectData, savedAt: new Date().toISOString() },
+    projectData: createEmptyProjectData(),
   });
   await adapter.saveProjectRecord(record);
 
@@ -60,13 +62,17 @@ export async function saveCurrentProject(
   const { activeProjectId } = usePlannerStore.getState();
   if (!activeProjectId) return;
 
-  const record = await adapter.loadProjectRecord(activeProjectId);
-  if (!record) return;
+  const loaded = await adapter.loadProjectRecord(activeProjectId);
+  if (!loaded) return;
 
-  record.projectData = projectData;
-  record.updatedAt = new Date().toISOString();
+  const record = {
+    ...loaded,
+    projectData,
+    updatedAt: new Date().toISOString(),
+  };
   await adapter.saveProjectRecord(record);
 
+  // Empty partial — updateProjectMeta always bumps updatedAt
   usePlannerStore.getState().updateProjectMeta(activeProjectId, {});
 }
 
@@ -119,21 +125,24 @@ export async function duplicateProject(
 }
 
 /** Soft-delete a project (mark as deleted) */
-export async function softDeleteProjectOp(
+export async function softDeleteProject(
   adapter: StorageAdapter,
   projectId: string,
 ): Promise<void> {
-  const record = await adapter.loadProjectRecord(projectId);
-  if (!record) return;
+  const loaded = await adapter.loadProjectRecord(projectId);
+  if (!loaded) return;
 
-  record.deletedAt = new Date().toISOString();
-  record.updatedAt = record.deletedAt;
-  await adapter.saveProjectRecord(record);
+  const now = new Date().toISOString();
+  await adapter.saveProjectRecord({
+    ...loaded,
+    deletedAt: now,
+    updatedAt: now,
+  });
   usePlannerStore.getState().softDeleteProject(projectId);
 }
 
 /** Permanently delete a project */
-export async function permanentDeleteProjectOp(
+export async function permanentDeleteProject(
   adapter: StorageAdapter,
   projectId: string,
 ): Promise<void> {
@@ -142,16 +151,18 @@ export async function permanentDeleteProjectOp(
 }
 
 /** Restore a soft-deleted project */
-export async function restoreProjectOp(
+export async function restoreProject(
   adapter: StorageAdapter,
   projectId: string,
 ): Promise<void> {
-  const record = await adapter.loadProjectRecord(projectId);
-  if (!record) return;
+  const loaded = await adapter.loadProjectRecord(projectId);
+  if (!loaded) return;
 
-  record.deletedAt = null;
-  record.updatedAt = new Date().toISOString();
-  await adapter.saveProjectRecord(record);
+  await adapter.saveProjectRecord({
+    ...loaded,
+    deletedAt: null,
+    updatedAt: new Date().toISOString(),
+  });
   usePlannerStore.getState().restoreProject(projectId);
 }
 
@@ -161,11 +172,14 @@ export async function renameProject(
   projectId: string,
   newName: string,
 ): Promise<ProjectRecord | null> {
-  const record = await adapter.loadProjectRecord(projectId);
-  if (!record) return null;
+  const loaded = await adapter.loadProjectRecord(projectId);
+  if (!loaded) return null;
 
-  record.name = newName;
-  record.updatedAt = new Date().toISOString();
+  const record = {
+    ...loaded,
+    name: newName,
+    updatedAt: new Date().toISOString(),
+  };
   await adapter.saveProjectRecord(record);
   usePlannerStore.getState().updateProjectMeta(projectId, { name: newName });
 
@@ -173,9 +187,7 @@ export async function renameProject(
 }
 
 /** Initialize the app: load all projects and app state */
-export async function initializeApp(
-  adapter: StorageAdapter,
-): Promise<{
+export async function initializeApp(adapter: StorageAdapter): Promise<{
   projects: ProjectListItem[];
   lastOpenedProjectId: string | null;
 }> {

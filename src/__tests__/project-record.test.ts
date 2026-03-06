@@ -5,14 +5,9 @@ import {
   migrateV2RecordToProjectRecord,
 } from "@/lib/projectRecord";
 import type { SerializedProject } from "@/lib/types";
+import { createEmptyProjectData } from "./helpers/fixtures";
 
-const emptyProjectData: SerializedProject = {
-  version: 4,
-  pixelsPerMeter: null,
-  backgroundImage: null,
-  savedAt: new Date().toISOString(),
-  objects: [],
-};
+const emptyProjectData = createEmptyProjectData();
 
 describe("createProjectRecord", () => {
   it("returns a valid record with UUID, timestamps, and null defaults", () => {
@@ -119,7 +114,8 @@ describe("migrateV2RecordToProjectRecord", () => {
     expect(record.updatedAt).toBe("2024-06-15T10:30:00.000Z");
     expect(record.deletedAt).toBeNull();
     expect(record.thumbnailDataUrl).toBeNull();
-    expect(record.projectData).toBe(data);
+    expect(record.projectData).toEqual(data);
+    expect(record.projectData).not.toBe(data); // cloned, not same reference
     expect(record.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );

@@ -19,6 +19,9 @@ import {
   NewProjectWizard,
   type NewProjectResult,
 } from "./project/NewProjectWizard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 import { usePlannerStore } from "@/lib/store";
 import { getDefaultAdapter } from "@/lib/storage/indexeddb";
 import {
@@ -27,15 +30,24 @@ import {
   openProject,
   renameProject,
   duplicateProject,
-  softDeleteProjectOp,
-  permanentDeleteProjectOp,
-  restoreProjectOp,
+  softDeleteProject,
+  permanentDeleteProject,
+  restoreProject,
 } from "@/lib/projectOperations";
 
 export default function PlannerApp() {
   const canvasRef = useRef<PlannerCanvasHandle>(null);
+  const pendingCanvasAction = useRef<
+    ((handle: PlannerCanvasHandle) => void) | null
+  >(null);
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [renameDialog, setRenameDialog] = useState<{
+    open: boolean;
+    projectId: string;
+    currentName: string;
+  }>({ open: false, projectId: "", currentName: "" });
+  const [renameValue, setRenameValue] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -66,6 +78,19 @@ export default function PlannerApp() {
     initializeApp(adapter);
   }, [adapter]);
 
+  // Flush pending canvas action when the canvas ref becomes available
+  useEffect(() => {
+    if (
+      activeView === "canvas" &&
+      canvasRef.current &&
+      pendingCanvasAction.current
+    ) {
+      const action = pendingCanvasAction.current;
+      pendingCanvasAction.current = null;
+      action(canvasRef.current);
+    }
+  });
+
   const handleCreateProject = useCallback(() => {
     setWizardOpen(true);
   }, []);
@@ -79,10 +104,9 @@ export default function PlannerApp() {
       });
       // If a background image was selected, load it after the canvas mounts
       if (result.backgroundImage) {
-        // Small delay to let canvas mount
-        setTimeout(() => {
-          canvasRef.current?.loadBackgroundImage(result.backgroundImage!);
-        }, 100);
+        const file = result.backgroundImage;
+        pendingCanvasAction.current = (handle) =>
+          handle.loadBackgroundImage(file);
       }
     },
     [adapter],
@@ -90,31 +114,36 @@ export default function PlannerApp() {
 
   const handleOpenProject = useCallback(
     async (id: string) => {
+      await canvasRef.current?.save();
       await openProject(adapter, id);
       // Load project data onto canvas after view switches
-      setTimeout(() => {
-        canvasRef.current?.load();
-      }, 100);
+      pendingCanvasAction.current = (handle) => handle.load();
     },
     [adapter],
   );
 
-  const handleGoHome = useCallback(() => {
-    usePlannerStore.getState().setActiveView("picker");
-    usePlannerStore.getState().setActiveProjectId(null);
+  const handleGoHome = useCallback(async () => {
+    await canvasRef.current?.save();
+    usePlannerStore.setState({ activeView: "picker", activeProjectId: null });
   }, []);
 
   const handleRenameProject = useCallback(
     (id: string) => {
       const project = projects.find((p) => p.id === id);
       if (!project) return;
-      const newName = prompt("Rename project:", project.name);
-      if (newName && newName.trim()) {
-        renameProject(adapter, id, newName.trim());
-      }
+      setRenameValue(project.name);
+      setRenameDialog({ open: true, projectId: id, currentName: project.name });
     },
-    [adapter, projects],
+    [projects],
   );
+
+  const handleRenameConfirm = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== renameDialog.currentName) {
+      renameProject(adapter, renameDialog.projectId, trimmed);
+    }
+    setRenameDialog((prev) => ({ ...prev, open: false }));
+  }, [adapter, renameValue, renameDialog]);
 
   const handleDuplicateProject = useCallback(
     async (id: string) => {
@@ -125,21 +154,21 @@ export default function PlannerApp() {
 
   const handleDeleteProject = useCallback(
     async (id: string) => {
-      await softDeleteProjectOp(adapter, id);
+      await softDeleteProject(adapter, id);
     },
     [adapter],
   );
 
   const handleRestoreProject = useCallback(
     async (id: string) => {
-      await restoreProjectOp(adapter, id);
+      await restoreProject(adapter, id);
     },
     [adapter],
   );
 
   const handlePermanentDeleteProject = useCallback(
     async (id: string) => {
-      await permanentDeleteProjectOp(adapter, id);
+      await permanentDeleteProject(adapter, id);
     },
     [adapter],
   );
@@ -243,6 +272,13 @@ export default function PlannerApp() {
           onClose={() => setWizardOpen(false)}
           onComplete={handleWizardComplete}
         />
+        <RenameDialog
+          renameDialog={renameDialog}
+          setRenameDialog={setRenameDialog}
+          renameValue={renameValue}
+          setRenameValue={setRenameValue}
+          onConfirm={handleRenameConfirm}
+        />
       </ErrorBoundary>
     );
   }
@@ -277,6 +313,65 @@ export default function PlannerApp() {
         onClose={() => setWizardOpen(false)}
         onComplete={handleWizardComplete}
       />
+      <RenameDialog
+        renameDialog={renameDialog}
+        setRenameDialog={setRenameDialog}
+        renameValue={renameValue}
+        setRenameValue={setRenameValue}
+        onConfirm={handleRenameConfirm}
+      />
     </ErrorBoundary>
+  );
+}
+
+function RenameDialog({
+  renameDialog,
+  setRenameDialog,
+  renameValue,
+  setRenameValue,
+  onConfirm,
+}: {
+  renameDialog: { open: boolean; projectId: string; currentName: string };
+  setRenameDialog: React.Dispatch<
+    React.SetStateAction<{
+      open: boolean;
+      projectId: string;
+      currentName: string;
+    }>
+  >;
+  renameValue: string;
+  setRenameValue: (v: string) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog
+      open={renameDialog.open}
+      onOpenChange={(open) => setRenameDialog((prev) => ({ ...prev, open }))}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Rename Project</DialogTitle>
+        </DialogHeader>
+        <Input
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onConfirm()}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2 mt-2">
+          <Button
+            variant="ghost"
+            onClick={() =>
+              setRenameDialog((prev) => ({ ...prev, open: false }))
+            }
+          >
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} disabled={!renameValue.trim()}>
+            Rename
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

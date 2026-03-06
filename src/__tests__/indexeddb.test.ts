@@ -13,6 +13,7 @@ import {
 } from "@/lib/storage/indexeddb";
 import { createProjectRecord } from "@/lib/projectRecord";
 import type { SerializedProject } from "@/lib/types";
+import { createEmptyProjectData } from "./helpers/fixtures";
 
 const testProject: SerializedProject = {
   version: 2,
@@ -128,13 +129,7 @@ describe("Image pool operations", () => {
   });
 });
 
-const emptyProjectData: SerializedProject = {
-  version: 4,
-  pixelsPerMeter: null,
-  backgroundImage: null,
-  savedAt: new Date().toISOString(),
-  objects: [],
-};
+const emptyProjectData = createEmptyProjectData();
 
 describe("IndexedDB adapter — multi-project methods", () => {
   it("saveProjectRecord + loadProjectRecord round-trip", async () => {

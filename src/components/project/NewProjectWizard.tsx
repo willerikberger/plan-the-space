@@ -35,24 +35,24 @@ export function NewProjectWizard({
 
   const totalSteps = 2;
 
-  const handleComplete = () => {
-    onComplete({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      backgroundImage: backgroundImage ?? undefined,
-    });
-    // Reset state
+  const resetWizard = () => {
     setStep(1);
     setName("");
     setDescription("");
     setBackgroundImage(null);
   };
 
+  const handleComplete = () => {
+    onComplete({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      backgroundImage: backgroundImage ?? undefined,
+    });
+    resetWizard();
+  };
+
   const handleClose = () => {
-    setStep(1);
-    setName("");
-    setDescription("");
-    setBackgroundImage(null);
+    resetWizard();
     onClose();
   };
 
@@ -125,12 +125,12 @@ export function NewProjectWizard({
                 Back
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleComplete}>
-                  {backgroundImage ? "Done" : "Skip & Create"}
-                </Button>
-                {backgroundImage && (
-                  <Button onClick={handleComplete}>Done</Button>
+                {!backgroundImage && (
+                  <Button variant="outline" onClick={handleComplete}>
+                    Skip
+                  </Button>
                 )}
+                <Button onClick={handleComplete}>Done</Button>
               </div>
             </div>
           </div>

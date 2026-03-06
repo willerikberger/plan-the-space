@@ -2,15 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createInMemoryAdapter } from "@/lib/storage/storageAdapter";
 import type { StorageAdapter } from "@/lib/storage/storageAdapter";
 import { createProjectRecord } from "@/lib/projectRecord";
-import type { SerializedProject } from "@/lib/types";
+import { createEmptyProjectData } from "./helpers/fixtures";
 
-const emptyProjectData: SerializedProject = {
-  version: 4,
-  pixelsPerMeter: null,
-  backgroundImage: null,
-  savedAt: new Date().toISOString(),
-  objects: [],
-};
+const emptyProjectData = createEmptyProjectData();
 
 describe("In-memory StorageAdapter — multi-project methods", () => {
   let adapter: StorageAdapter;

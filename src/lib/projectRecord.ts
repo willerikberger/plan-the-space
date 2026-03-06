@@ -46,6 +46,6 @@ export function migrateV2RecordToProjectRecord(
     updatedAt: savedAt,
     deletedAt: null,
     thumbnailDataUrl: null,
-    projectData: data,
+    projectData: structuredClone(data),
   };
 }

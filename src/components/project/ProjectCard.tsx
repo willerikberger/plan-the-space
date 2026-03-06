@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MoreVertical, Copy, Trash2, Pencil } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { MoreVertical, Copy, Trash2, Pencil, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProjectListItem } from "@/lib/types";
 
@@ -33,6 +33,18 @@ export function ProjectCard({
   onDelete,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div
@@ -57,7 +69,7 @@ export function ProjectCard({
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-planner-text-muted text-3xl">📐</span>
+          <Ruler size={32} className="text-planner-text-muted" />
         )}
       </div>
 
@@ -72,7 +84,7 @@ export function ProjectCard({
       </div>
 
       {/* Menu button */}
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-2 right-2" ref={menuRef}>
         <Button
           variant="ghost"
           size="icon-xs"

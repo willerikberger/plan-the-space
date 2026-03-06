@@ -9,9 +9,9 @@ import {
   openProject,
   duplicateProject,
   renameProject,
-  softDeleteProjectOp,
-  restoreProjectOp,
-  permanentDeleteProjectOp,
+  softDeleteProject,
+  restoreProject,
+  permanentDeleteProject,
   importJsonAsProject,
 } from "@/lib/projectOperations";
 import type { SerializedProject } from "@/lib/types";
@@ -106,21 +106,21 @@ describe("Multi-project end-to-end workflow", () => {
     ).toBe("Renamed A");
 
     // 8. Soft delete
-    await softDeleteProjectOp(adapter, id2);
+    await softDeleteProject(adapter, id2);
     const deletedProject = usePlannerStore
       .getState()
       .projects.find((p) => p.id === id2);
     expect(deletedProject!.deletedAt).toBeTruthy();
 
     // 9. Restore
-    await restoreProjectOp(adapter, id2);
+    await restoreProject(adapter, id2);
     const restoredProject = usePlannerStore
       .getState()
       .projects.find((p) => p.id === id2);
     expect(restoredProject!.deletedAt).toBeNull();
 
     // 10. Permanent delete
-    await permanentDeleteProjectOp(adapter, id2);
+    await permanentDeleteProject(adapter, id2);
     expect(
       usePlannerStore.getState().projects.find((p) => p.id === id2),
     ).toBeUndefined();
