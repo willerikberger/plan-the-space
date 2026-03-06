@@ -1,15 +1,22 @@
 "use client";
 
-import { Undo2, Redo2 } from "lucide-react";
+import { Undo2, Redo2, Home } from "lucide-react";
 import { usePlannerStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 interface ToolbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
+  onGoHome?: () => void;
+  projectName?: string | null;
 }
 
-export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
+export function Toolbar({
+  onUndo,
+  onRedo,
+  onGoHome,
+  projectName,
+}: ToolbarProps) {
   const mode = usePlannerStore((s) => s.mode);
   const pixelsPerMeter = usePlannerStore((s) => s.pixelsPerMeter);
   const historyState = usePlannerStore((s) => s.historyState);
@@ -40,6 +47,21 @@ export function Toolbar({ onUndo, onRedo }: ToolbarProps) {
 
   return (
     <div className="flex items-center gap-3 px-5 py-3 bg-planner-sidebar border-b border-planner-accent">
+      {onGoHome && (
+        <button
+          onClick={onGoHome}
+          className="p-1.5 rounded text-planner-text-muted hover:text-planner-text hover:bg-planner-accent transition-colors"
+          aria-label="Go to project picker"
+          title="Home"
+        >
+          <Home size={16} />
+        </button>
+      )}
+      {projectName && (
+        <span className="text-sm font-medium text-planner-text truncate max-w-48">
+          {projectName}
+        </span>
+      )}
       <span className={modeClass}>{modeLabel}</span>
       <span className="text-sm text-planner-text-muted">
         {pixelsPerMeter ? (
