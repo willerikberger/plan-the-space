@@ -491,19 +491,59 @@ export interface AppState {
 }
 
 // ============================================
+// Project slice (multi-project management)
+// ============================================
+
+export type ActiveView = "picker" | "canvas" | "wizard";
+
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  thumbnailDataUrl: string | null;
+}
+
+export interface ProjectSliceState {
+  activeView: ActiveView;
+  activeProjectId: string | null;
+  projects: ProjectListItem[];
+}
+
+export interface ProjectSliceActions {
+  setActiveView: (view: ActiveView) => void;
+  setActiveProjectId: (id: string | null) => void;
+  setProjects: (projects: ProjectListItem[]) => void;
+  addProject: (project: ProjectListItem) => void;
+  updateProjectMeta: (
+    id: string,
+    partial: Partial<Pick<ProjectListItem, "name" | "thumbnailDataUrl">>,
+  ) => void;
+  softDeleteProject: (id: string) => void;
+  restoreProject: (id: string) => void;
+  permanentlyDeleteProject: (id: string) => void;
+}
+
+export type ProjectSlice = ProjectSliceState & ProjectSliceActions;
+
+// ============================================
 // Compound store types (backward compat)
 // ============================================
 export type PlannerState = CanvasSliceState &
   ObjectsSliceState &
   UISliceState &
   HistorySliceState &
-  LayerSliceState;
+  LayerSliceState &
+  ProjectSliceState;
 
 export type PlannerActions = CanvasSliceActions &
   ObjectsSliceActions &
   UISliceActions &
   HistorySliceActions &
-  LayerSliceActions & {
+  LayerSliceActions &
+  ProjectSliceActions & {
     loadProject: (data: {
       pixelsPerMeter: number | null;
       objects: PlannerObject[];

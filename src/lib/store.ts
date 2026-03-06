@@ -10,9 +10,11 @@ import type {
   UISlice,
   HistorySlice,
   LayerSlice,
+  ProjectSlice,
   LayerGroup,
   LayerEntry,
   LayerVisibility,
+  ProjectListItem,
   Camera,
 } from "./types";
 import { canTransitionMode, layerGroupForType } from "./types";
@@ -299,6 +301,80 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
 });
 
 // ============================================
+// Project slice (multi-project management)
+// ============================================
+const initialProjectState = {
+  activeView: "picker" as const,
+  activeProjectId: null as string | null,
+  projects: [] as ProjectListItem[],
+};
+
+const createProjectSlice: StoreSliceCreator<ProjectSlice> = (set) => ({
+  ...initialProjectState,
+
+  setActiveView: (view) => set({ activeView: view }),
+  setActiveProjectId: (id) => set({ activeProjectId: id }),
+  setProjects: (projects) => set({ projects }),
+
+  addProject: (project) =>
+    set((state) => {
+      const idx = state.projects.findIndex((p) => p.id === project.id);
+      if (idx >= 0) {
+        const next = [...state.projects];
+        next[idx] = project;
+        return { projects: next };
+      }
+      return { projects: [...state.projects, project] };
+    }),
+
+  updateProjectMeta: (id, partial) =>
+    set((state) => {
+      const idx = state.projects.findIndex((p) => p.id === id);
+      if (idx < 0) return state;
+      const next = [...state.projects];
+      next[idx] = {
+        ...next[idx],
+        ...partial,
+        updatedAt: new Date().toISOString(),
+      };
+      return { projects: next };
+    }),
+
+  softDeleteProject: (id) =>
+    set((state) => {
+      const idx = state.projects.findIndex((p) => p.id === id);
+      if (idx < 0) return state;
+      const next = [...state.projects];
+      next[idx] = { ...next[idx], deletedAt: new Date().toISOString() };
+      const updates: Partial<ProjectSlice> = { projects: next };
+      if (state.activeProjectId === id) {
+        updates.activeProjectId = null;
+        updates.activeView = "picker";
+      }
+      return updates;
+    }),
+
+  restoreProject: (id) =>
+    set((state) => {
+      const idx = state.projects.findIndex((p) => p.id === id);
+      if (idx < 0) return state;
+      const next = [...state.projects];
+      next[idx] = { ...next[idx], deletedAt: null };
+      return { projects: next };
+    }),
+
+  permanentlyDeleteProject: (id) =>
+    set((state) => {
+      const next = state.projects.filter((p) => p.id !== id);
+      const updates: Partial<ProjectSlice> = { projects: next };
+      if (state.activeProjectId === id) {
+        updates.activeProjectId = null;
+      }
+      return updates;
+    }),
+});
+
+// ============================================
 // Composed store
 // ============================================
 export const usePlannerStore = create<PlannerStore>()((...a) => ({
@@ -307,6 +383,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   ...createUISlice(...a),
   ...createHistorySlice(...a),
   ...createLayerSlice(...a),
+  ...createProjectSlice(...a),
 
   // Cross-slice actions
   loadProject: ({ pixelsPerMeter, objects }) => {
@@ -335,6 +412,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
       layers: { background: [], masks: [], content: [] },
       layerVisibility: { ...allVisible },
       objects: new Map(),
+      // Preserve projects list; reset canvas-level project state only
     });
   },
 }));
