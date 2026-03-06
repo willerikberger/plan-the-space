@@ -1,4 +1,4 @@
-import type { SerializedProject } from "@/lib/types";
+import type { SerializedProject, ProjectRecord, AppState } from "@/lib/types";
 
 // ============================================
 // StorageAdapter interface
@@ -7,13 +7,13 @@ import type { SerializedProject } from "@/lib/types";
 // (IndexedDB, Vercel KV, localStorage, in-memory for tests, etc.)
 
 export interface StorageAdapter {
-  /** Persist a serialized project */
+  /** Persist a serialized project (legacy single-project) */
   save(project: SerializedProject): Promise<void>;
 
-  /** Load the persisted project, or null if none exists */
+  /** Load the persisted project, or null if none exists (legacy) */
   load(): Promise<SerializedProject | null>;
 
-  /** Remove the persisted project */
+  /** Remove the persisted project (legacy) */
   clear(): Promise<void>;
 
   /** Persist a deduplicated image blob by its ref key */
@@ -27,6 +27,26 @@ export interface StorageAdapter {
 
   /** Remove all images from the pool */
   clearImages(): Promise<void>;
+
+  // --- Multi-project methods ---
+
+  /** Save or update a project record by its UUID */
+  saveProjectRecord(record: ProjectRecord): Promise<void>;
+
+  /** Load a project record by UUID, or null if not found */
+  loadProjectRecord(id: string): Promise<ProjectRecord | null>;
+
+  /** Load all project records */
+  loadAllProjectRecords(): Promise<ProjectRecord[]>;
+
+  /** Permanently delete a project record by UUID */
+  deleteProjectRecord(id: string): Promise<void>;
+
+  /** Save app-level state (e.g. last opened project) */
+  saveAppState(state: AppState): Promise<void>;
+
+  /** Load app-level state, or null if none exists */
+  loadAppState(): Promise<AppState | null>;
 }
 
 // ============================================
@@ -55,6 +75,8 @@ export interface DBMigration {
 export function createInMemoryAdapter(): StorageAdapter {
   let stored: SerializedProject | null = null;
   const images = new Map<string, string>();
+  const projectRecords = new Map<string, ProjectRecord>();
+  let appState: AppState | null = null;
 
   return {
     async save(project) {
@@ -77,6 +99,27 @@ export function createInMemoryAdapter(): StorageAdapter {
     },
     async clearImages() {
       images.clear();
+    },
+
+    // Multi-project methods
+    async saveProjectRecord(record) {
+      projectRecords.set(record.id, structuredClone(record));
+    },
+    async loadProjectRecord(id) {
+      const r = projectRecords.get(id);
+      return r ? structuredClone(r) : null;
+    },
+    async loadAllProjectRecords() {
+      return [...projectRecords.values()].map((r) => structuredClone(r));
+    },
+    async deleteProjectRecord(id) {
+      projectRecords.delete(id);
+    },
+    async saveAppState(state) {
+      appState = structuredClone(state);
+    },
+    async loadAppState() {
+      return appState ? structuredClone(appState) : null;
     },
   };
 }

@@ -9,7 +9,9 @@ import {
   loadImageData,
   deleteImageData,
   clearImagePool,
+  createIndexedDBAdapter,
 } from "@/lib/storage/indexeddb";
+import { createProjectRecord } from "@/lib/projectRecord";
 import type { SerializedProject } from "@/lib/types";
 
 const testProject: SerializedProject = {
@@ -123,5 +125,118 @@ describe("Image pool operations", () => {
     await clearImagePool();
     expect(await loadImageData("a")).toBeNull();
     expect(await loadImageData("b")).toBeNull();
+  });
+});
+
+const emptyProjectData: SerializedProject = {
+  version: 4,
+  pixelsPerMeter: null,
+  backgroundImage: null,
+  savedAt: new Date().toISOString(),
+  objects: [],
+};
+
+describe("IndexedDB adapter — multi-project methods", () => {
+  it("saveProjectRecord + loadProjectRecord round-trip", async () => {
+    const adapter = createIndexedDBAdapter();
+    const record = createProjectRecord({
+      name: "Test",
+      projectData: emptyProjectData,
+    });
+    await adapter.saveProjectRecord(record);
+    const loaded = await adapter.loadProjectRecord(record.id);
+    expect(loaded).toEqual(record);
+  });
+
+  it("loadProjectRecord returns null for nonexistent", async () => {
+    const adapter = createIndexedDBAdapter();
+    const loaded = await adapter.loadProjectRecord("nonexistent");
+    expect(loaded).toBeNull();
+  });
+
+  it("loadAllProjectRecords returns all saved records", async () => {
+    const adapter = createIndexedDBAdapter();
+    const r1 = createProjectRecord({
+      name: "A",
+      projectData: emptyProjectData,
+    });
+    const r2 = createProjectRecord({
+      name: "B",
+      projectData: emptyProjectData,
+    });
+    await adapter.saveProjectRecord(r1);
+    await adapter.saveProjectRecord(r2);
+    const all = await adapter.loadAllProjectRecords();
+    expect(all).toHaveLength(2);
+  });
+
+  it("deleteProjectRecord removes by ID", async () => {
+    const adapter = createIndexedDBAdapter();
+    const record = createProjectRecord({
+      name: "Doomed",
+      projectData: emptyProjectData,
+    });
+    await adapter.saveProjectRecord(record);
+    await adapter.deleteProjectRecord(record.id);
+    const loaded = await adapter.loadProjectRecord(record.id);
+    expect(loaded).toBeNull();
+  });
+
+  it("saveAppState + loadAppState round-trip", async () => {
+    const adapter = createIndexedDBAdapter();
+    await adapter.saveAppState({ lastOpenedProjectId: "abc-123" });
+    const state = await adapter.loadAppState();
+    expect(state).toEqual({ lastOpenedProjectId: "abc-123" });
+  });
+
+  it("loadAppState returns null when empty", async () => {
+    const adapter = createIndexedDBAdapter();
+    const state = await adapter.loadAppState();
+    expect(state).toBeNull();
+  });
+});
+
+describe("IndexedDB v2→v3 data migration", () => {
+  it("migrates legacy single-project to ProjectRecord on upgrade", async () => {
+    const DB_NAME = "PlanTheSpaceDB";
+    const STORE = "projects";
+    const KEY = "plan-the-space-project";
+
+    // Manually create a v2 DB and populate it
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 2);
+      req.onerror = () => reject(req.error);
+      req.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("image-pool")) {
+          db.createObjectStore("image-pool");
+        }
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+        store.put({ ...testProject, id: KEY });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+      };
+    });
+
+    // Now open via the adapter at v3 — triggers migration
+    const adapter = createIndexedDBAdapter();
+    const all = await adapter.loadAllProjectRecords();
+    expect(all).toHaveLength(1);
+    expect(all[0].name).toBe("My Project");
+    expect(all[0].projectData).toBeDefined();
+
+    // App state should have lastOpenedProjectId set
+    const appState = await adapter.loadAppState();
+    expect(appState).not.toBeNull();
+    expect(appState!.lastOpenedProjectId).toBe(all[0].id);
   });
 });

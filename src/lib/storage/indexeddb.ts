@@ -1,13 +1,16 @@
-import type { SerializedProject } from "@/lib/types";
+import type { SerializedProject, ProjectRecord, AppState } from "@/lib/types";
 import type { StorageAdapter, DBMigration } from "./storageAdapter";
 import {
   DB_NAME,
   DB_VERSION,
   STORE_NAME,
   IMAGE_POOL_STORE,
+  APP_STATE_STORE,
+  APP_STATE_KEY,
   STORAGE_KEY,
 } from "@/lib/constants";
 import { migrateProject } from "@/components/canvas/utils/serialization";
+import { migrateV2RecordToProjectRecord } from "@/lib/projectRecord";
 
 // ============================================
 // Schema migrations
@@ -32,6 +35,35 @@ const migrations: readonly DBMigration[] = [
       if (!db.objectStoreNames.contains(IMAGE_POOL_STORE)) {
         db.createObjectStore(IMAGE_POOL_STORE);
       }
+    },
+  },
+  {
+    // Version 2 -> 3: add the app-state store + migrate legacy project
+    fromVersion: 2,
+    migrate(db, tx) {
+      if (!db.objectStoreNames.contains(APP_STATE_STORE)) {
+        db.createObjectStore(APP_STATE_STORE, { keyPath: "id" });
+      }
+
+      // Migrate existing single-project record to a ProjectRecord
+      const projectStore = tx.objectStore(STORE_NAME);
+      const getRequest = projectStore.get(STORAGE_KEY);
+      getRequest.onsuccess = () => {
+        const oldData = getRequest.result as SerializedProject | undefined;
+        if (!oldData) return;
+
+        const record = migrateV2RecordToProjectRecord(oldData);
+        projectStore.put(record);
+        projectStore.delete(STORAGE_KEY);
+
+        // Save last-opened reference in app-state
+        const appStateStore = tx.objectStore(APP_STATE_STORE);
+        const state: AppState & { id: string } = {
+          id: APP_STATE_KEY,
+          lastOpenedProjectId: record.id,
+        };
+        appStateStore.put(state);
+      };
     },
   },
 ];
@@ -142,6 +174,58 @@ export function createIndexedDBAdapter(): StorageAdapter {
 
     async clearImages(): Promise<void> {
       await idbWrite(IMAGE_POOL_STORE, (store) => store.clear());
+    },
+
+    // Multi-project methods
+    async saveProjectRecord(record: ProjectRecord): Promise<void> {
+      await idbWrite(STORE_NAME, (store) => store.put(record));
+    },
+
+    async loadProjectRecord(id: string): Promise<ProjectRecord | null> {
+      const data = await idbRead<ProjectRecord>(STORE_NAME, (store) =>
+        store.get(id),
+      );
+      return data ?? null;
+    },
+
+    async loadAllProjectRecords(): Promise<ProjectRecord[]> {
+      const db = await openDatabase();
+      try {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        return await new Promise<ProjectRecord[]>((resolve, reject) => {
+          const request = store.getAll();
+          request.onsuccess = () => {
+            // Filter out legacy records (they have a string 'id' matching STORAGE_KEY)
+            const records = (request.result as ProjectRecord[]).filter(
+              (r) => r.id !== STORAGE_KEY && r.createdAt != null,
+            );
+            resolve(records);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      } finally {
+        db.close();
+      }
+    },
+
+    async deleteProjectRecord(id: string): Promise<void> {
+      await idbWrite(STORE_NAME, (store) => store.delete(id));
+    },
+
+    async saveAppState(state: AppState): Promise<void> {
+      await idbWrite(APP_STATE_STORE, (store) =>
+        store.put({ ...state, id: APP_STATE_KEY }),
+      );
+    },
+
+    async loadAppState(): Promise<AppState | null> {
+      const data = await idbRead<AppState & { id: string }>(
+        APP_STATE_STORE,
+        (store) => store.get(APP_STATE_KEY),
+      );
+      if (!data) return null;
+      return { lastOpenedProjectId: data.lastOpenedProjectId };
     },
   };
 }
