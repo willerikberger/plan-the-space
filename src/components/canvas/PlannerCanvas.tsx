@@ -20,7 +20,12 @@ import type {
   SerializedObject,
   HistorySnapshot,
   PlannerObject,
+  Camera,
+  LayerGroup,
+  LayerEntry,
 } from "@/lib/types";
+import { cameraToFabricViewport } from "@/components/canvas/utils/coordinates";
+import type { TMat2D } from "fabric";
 import {
   serializeProject,
   deserializeProject,
@@ -75,6 +80,11 @@ export interface PlannerCanvasHandle {
   // Storage
   save: () => Promise<void>;
   load: () => Promise<void>;
+  loadFromSerializedData: (
+    serializedObjects: SerializedObject[],
+    camera?: Camera,
+    layers?: Record<LayerGroup, LayerEntry[]>,
+  ) => Promise<void>;
   clearStorage: () => Promise<void>;
   exportJson: () => void;
   importJson: (file: File) => Promise<void>;
@@ -231,9 +241,11 @@ export function PlannerCanvas({
       // Set calibration — hook loaders will re-add objects via addObject()
       usePlannerStore.getState().setPixelsPerMeter(ss.pixelsPerMeter);
 
-      // Restore camera if present in snapshot
+      // Restore camera and Fabric viewport if present in snapshot
       if (ss.camera) {
         usePlannerStore.getState().setCamera(ss.camera);
+        const vpt = cameraToFabricViewport(ss.camera) as TMat2D;
+        fabricCanvasRef.current?.setViewportTransform(vpt);
       }
 
       // Reconstruct Fabric objects from snapshots
@@ -402,6 +414,12 @@ export function PlannerCanvas({
       s.layers,
     );
     await saveToIDB(data);
+    // Also save to per-project record if active
+    if (s.activeProjectId) {
+      const { saveCurrentProject } = await import("@/lib/projectOperations");
+      const { getDefaultAdapter } = await import("@/lib/storage/indexeddb");
+      await saveCurrentProject(getDefaultAdapter(), data);
+    }
     s.setStatusMessage("Saved to browser storage");
   }, [getFabricState]);
 
@@ -437,9 +455,11 @@ export function PlannerCanvas({
       clearCanvas();
       usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
 
-      // Restore camera if saved
+      // Restore camera and Fabric viewport if saved
       if (deserialized.camera) {
         usePlannerStore.getState().setCamera(deserialized.camera);
+        const vpt = cameraToFabricViewport(deserialized.camera) as TMat2D;
+        fabricCanvasRef.current?.setViewportTransform(vpt);
       }
 
       await loadProjectFromData(deserialized.serializedObjects);
@@ -468,6 +488,49 @@ export function PlannerCanvas({
     resetHistory,
     captureSnapshot,
   ]);
+
+  const loadFromSerializedData = useCallback(
+    async (
+      serializedObjects: SerializedObject[],
+      camera?: Camera,
+      layers?: Record<LayerGroup, LayerEntry[]>,
+    ) => {
+      try {
+        clearCanvas();
+        const store = usePlannerStore.getState();
+
+        if (camera) {
+          store.setCamera(camera);
+          const vpt = cameraToFabricViewport(camera) as TMat2D;
+          fabricCanvasRef.current?.setViewportTransform(vpt);
+        }
+
+        await loadProjectFromData(serializedObjects);
+
+        if (layers) {
+          usePlannerStore.setState({ layers });
+          reorderObjects();
+        }
+
+        store.setStatusMessage("Project loaded");
+        await resetHistory();
+        captureSnapshot();
+      } catch (err) {
+        usePlannerStore
+          .getState()
+          .setStatusMessage("Failed to load project onto canvas");
+        console.error("Load error:", err);
+      }
+    },
+    [
+      fabricCanvasRef,
+      clearCanvas,
+      loadProjectFromData,
+      reorderObjects,
+      resetHistory,
+      captureSnapshot,
+    ],
+  );
 
   const clearStorage = useCallback(async () => {
     await clearIDB();
@@ -528,9 +591,11 @@ export function PlannerCanvas({
           .getState()
           .setPixelsPerMeter(deserialized.pixelsPerMeter);
 
-        // Restore camera if present in imported data
+        // Restore camera and Fabric viewport if present in imported data
         if (deserialized.camera) {
           usePlannerStore.getState().setCamera(deserialized.camera);
+          const vpt = cameraToFabricViewport(deserialized.camera) as TMat2D;
+          fabricCanvasRef.current?.setViewportTransform(vpt);
         }
 
         await loadProjectFromData(deserialized.serializedObjects);
@@ -716,6 +781,7 @@ export function PlannerCanvas({
     selectedObjectId: getSelectedObjectId,
     save,
     load,
+    loadFromSerializedData,
     clearStorage,
     exportJson,
     importJson,

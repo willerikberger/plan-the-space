@@ -117,9 +117,16 @@ export default function PlannerApp() {
   const handleOpenProject = useCallback(
     async (id: string) => {
       await canvasRef.current?.save();
-      await openProject(adapter, id);
-      // Load project data onto canvas after view switches
-      pendingCanvasAction.current = (handle) => handle.load();
+      const result = await openProject(adapter, id);
+      if (result) {
+        // Load project data directly onto canvas (bypasses legacy IDB)
+        pendingCanvasAction.current = (handle) =>
+          handle.loadFromSerializedData(
+            result.serializedObjects,
+            result.camera,
+            result.layers,
+          );
+      }
     },
     [adapter],
   );

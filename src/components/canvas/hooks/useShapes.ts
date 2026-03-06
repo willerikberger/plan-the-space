@@ -185,7 +185,12 @@ export function useShapes(
       let widthPx = data.width ?? data.widthM * store.pixelsPerMeter;
       let heightPx = data.height ?? data.heightM * store.pixelsPerMeter;
 
-      if (data.worldX != null && data.worldY != null && camera) {
+      if (
+        data.width == null &&
+        data.worldX != null &&
+        data.worldY != null &&
+        camera
+      ) {
         const canvasRect = worldRectToCanvas(
           data.worldX - data.widthM / 2,
           data.worldY - data.heightM / 2,

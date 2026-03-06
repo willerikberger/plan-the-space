@@ -267,7 +267,16 @@ export function useLines(
       let lineLeft = data.left;
       let lineTop = data.top;
 
+      const hasPixelData =
+        data.x1 !== 0 ||
+        data.y1 !== 0 ||
+        data.x2 !== 0 ||
+        data.y2 !== 0 ||
+        data.left !== 0 ||
+        data.top !== 0;
+
       if (
+        !hasPixelData &&
         data.worldX1 != null &&
         data.worldY1 != null &&
         data.worldX2 != null &&

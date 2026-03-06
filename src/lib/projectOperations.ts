@@ -3,6 +3,10 @@ import type {
   ProjectRecord,
   ProjectListItem,
   SerializedProject,
+  SerializedObject,
+  Camera,
+  LayerGroup,
+  LayerEntry,
 } from "./types";
 import { usePlannerStore } from "./store";
 import { createProjectRecord, duplicateProjectRecord } from "./projectRecord";
@@ -76,11 +80,19 @@ export async function saveCurrentProject(
   usePlannerStore.getState().updateProjectMeta(activeProjectId, {});
 }
 
+/** Result of opening a project, includes deserialized data for canvas loading */
+export interface OpenProjectResult {
+  record: ProjectRecord;
+  serializedObjects: SerializedObject[];
+  camera?: Camera;
+  layers?: Record<LayerGroup, LayerEntry[]>;
+}
+
 /** Open an existing project by loading its data into the store */
 export async function openProject(
   adapter: StorageAdapter,
   projectId: string,
-): Promise<ProjectRecord | null> {
+): Promise<OpenProjectResult | null> {
   const record = await adapter.loadProjectRecord(projectId);
   if (!record) return null;
 
@@ -106,7 +118,12 @@ export async function openProject(
 
   await adapter.saveAppState({ lastOpenedProjectId: projectId });
 
-  return record;
+  return {
+    record,
+    serializedObjects: deserialized.serializedObjects,
+    camera: deserialized.camera ?? undefined,
+    layers: deserialized.layers ?? undefined,
+  };
 }
 
 /** Duplicate a project */

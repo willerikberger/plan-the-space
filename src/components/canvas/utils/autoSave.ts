@@ -14,6 +14,8 @@ import type {
 } from "@/lib/types";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 import { usePlannerStore } from "@/lib/store";
+import { saveCurrentProject } from "@/lib/projectOperations";
+import { getDefaultAdapter } from "@/lib/storage/indexeddb";
 import type { FabricStateResult } from "./canvasOrchestration";
 
 /** Signature for the getFabricState function */
@@ -62,7 +64,12 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
         s.camera,
         s.layers,
       );
+      // Save to legacy IDB for backward compat
       await saveToIDB(data);
+      // Also save to per-project record if a project is active
+      if (s.activeProjectId) {
+        await saveCurrentProject(getDefaultAdapter(), data);
+      }
       s.setStatusMessage("Saved to browser storage");
     } catch (err) {
       usePlannerStore.getState().setStatusMessage("Auto-save failed");
@@ -95,4 +102,8 @@ export function handleBeforeUnload(
   // Synchronous best-effort via sendBeacon isn't possible with IDB,
   // but we can try a fire-and-forget save
   saveToIDB(data).catch(() => {});
+  // Also save to per-project record if active
+  if (s.activeProjectId) {
+    saveCurrentProject(getDefaultAdapter(), data).catch(() => {});
+  }
 }
