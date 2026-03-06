@@ -38,6 +38,13 @@ export function useFabricCanvas(): UseFabricCanvasReturn {
     });
 
     fabricCanvasRef.current = canvas;
+
+    // Expose Fabric canvas for E2E tests (dev only)
+    if (process.env.NODE_ENV !== "production" && canvasElRef.current) {
+      (canvasElRef.current as unknown as Record<string, unknown>).__fabric =
+        canvas;
+    }
+
     return canvas;
   }, []);
 

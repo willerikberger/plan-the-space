@@ -46,15 +46,24 @@ export function LinePanel({
           max="20"
           value={lineWidth}
           onChange={(e) => setLineWidth(parseInt(e.target.value) || 3)}
+          data-testid="line-width-input"
         />
       </div>
       <div className="flex gap-2">
         {mode !== "drawing-line" ? (
-          <Button onClick={onStartDrawLine} disabled={!isCalibrated}>
+          <Button
+            onClick={onStartDrawLine}
+            disabled={!isCalibrated}
+            data-testid="draw-line-btn"
+          >
             Draw Line
           </Button>
         ) : (
-          <Button variant="secondary" onClick={onCancelDrawLine}>
+          <Button
+            variant="secondary"
+            onClick={onCancelDrawLine}
+            data-testid="cancel-line-btn"
+          >
             Cancel
           </Button>
         )}

@@ -58,7 +58,7 @@ export function NewProjectWizard({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="new-project-wizard">
         <DialogHeader>
           <DialogTitle>
             New Project — Step {step} of {totalSteps}
@@ -75,6 +75,7 @@ export function NewProjectWizard({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Backyard Redesign"
                 autoFocus
+                data-testid="wizard-name-input"
               />
             </div>
             <div>
@@ -86,13 +87,18 @@ export function NewProjectWizard({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief description..."
+                data-testid="wizard-description-input"
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button onClick={() => setStep(2)} disabled={!name.trim()}>
+              <Button
+                onClick={() => setStep(2)}
+                disabled={!name.trim()}
+                data-testid="wizard-next-btn"
+              >
                 Next
               </Button>
             </div>
@@ -121,16 +127,26 @@ export function NewProjectWizard({
               )}
             </div>
             <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(1)}>
+              <Button
+                variant="ghost"
+                onClick={() => setStep(1)}
+                data-testid="wizard-back-btn"
+              >
                 Back
               </Button>
               <div className="flex gap-2">
                 {!backgroundImage && (
-                  <Button variant="outline" onClick={handleComplete}>
+                  <Button
+                    variant="outline"
+                    onClick={handleComplete}
+                    data-testid="wizard-skip-btn"
+                  >
                     Skip
                   </Button>
                 )}
-                <Button onClick={handleComplete}>Done</Button>
+                <Button onClick={handleComplete} data-testid="wizard-done-btn">
+                  Done
+                </Button>
               </div>
             </div>
           </div>

@@ -354,7 +354,7 @@ function RenameDialog({
       open={renameDialog.open}
       onOpenChange={(open) => setRenameDialog((prev) => ({ ...prev, open }))}
     >
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm" data-testid="rename-dialog">
         <DialogHeader>
           <DialogTitle>Rename Project</DialogTitle>
         </DialogHeader>
@@ -363,6 +363,7 @@ function RenameDialog({
           onChange={(e) => setRenameValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onConfirm()}
           autoFocus
+          data-testid="rename-input"
         />
         <div className="flex justify-end gap-2 mt-2">
           <Button
@@ -373,7 +374,11 @@ function RenameDialog({
           >
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={!renameValue.trim()}>
+          <Button
+            onClick={onConfirm}
+            disabled={!renameValue.trim()}
+            data-testid="rename-confirm-btn"
+          >
             Rename
           </Button>
         </div>

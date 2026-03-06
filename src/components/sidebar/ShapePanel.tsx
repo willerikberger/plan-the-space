@@ -40,6 +40,7 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
           placeholder="e.g. Garden Bed, Patio"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          data-testid="shape-name-input"
         />
       </div>
       <div className="flex gap-3">
@@ -54,6 +55,7 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
             value={width}
             onChange={(e) => setWidth(e.target.value)}
             aria-describedby="shape-dim-hint"
+            data-testid="shape-width-input"
           />
         </div>
         <div className="flex-1">
@@ -67,6 +69,7 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
             value={height}
             onChange={(e) => setHeight(e.target.value)}
             aria-describedby="shape-dim-hint"
+            data-testid="shape-height-input"
           />
           <p id="shape-dim-hint" className="sr-only">
             Minimum 0.1 meters
@@ -81,7 +84,11 @@ export function ShapePanel({ onAddShape }: ShapePanelProps) {
           onSelect={setSelectedColor}
         />
       </div>
-      <Button onClick={handleAdd} disabled={!isCalibrated}>
+      <Button
+        onClick={handleAdd}
+        disabled={!isCalibrated}
+        data-testid="add-shape-btn"
+      >
         Add Shape
       </Button>
       {!isCalibrated && (

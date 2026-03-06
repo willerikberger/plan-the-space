@@ -53,7 +53,11 @@ export function ProjectPicker({
         <h1 className="text-xl font-semibold text-planner-text">
           Plan the Space
         </h1>
-        <Button onClick={onCreateProject} size="sm">
+        <Button
+          onClick={onCreateProject}
+          size="sm"
+          data-testid="new-project-btn"
+        >
           <Plus size={16} />
           New Project
         </Button>
@@ -62,7 +66,10 @@ export function ProjectPicker({
       {/* Content */}
       <div className="flex-1 overflow-auto px-8 py-6">
         {activeProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
+          <div
+            className="flex flex-col items-center justify-center h-64 text-center"
+            data-testid="empty-projects"
+          >
             <p className="text-planner-text-muted text-lg mb-4">
               No projects yet
             </p>
@@ -72,7 +79,10 @@ export function ProjectPicker({
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+            data-testid="project-grid"
+          >
             {activeProjects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -93,6 +103,7 @@ export function ProjectPicker({
             <button
               className="flex items-center gap-2 text-sm text-planner-text-muted hover:text-planner-text transition-colors"
               onClick={() => setTrashOpen(!trashOpen)}
+              data-testid="trash-toggle"
             >
               <Trash2 size={14} />
               Trash ({trashedProjects.length})

@@ -52,6 +52,7 @@ export function StoragePanel({
         <Button
           variant="secondary"
           size="sm"
+          data-testid="save-btn"
           onClick={() => {
             onSave();
             toast.success("Project saved");
@@ -62,6 +63,7 @@ export function StoragePanel({
         <Button
           variant="secondary"
           size="sm"
+          data-testid="load-btn"
           onClick={() => {
             onLoad();
             toast.success("Project loaded");
@@ -74,6 +76,7 @@ export function StoragePanel({
           size="sm"
           className="text-planner-danger-alt"
           onClick={onClear}
+          data-testid="clear-storage-btn"
         >
           Clear
         </Button>
@@ -89,6 +92,7 @@ export function StoragePanel({
           <Button
             variant="secondary"
             size="sm"
+            data-testid="export-btn"
             onClick={() => {
               onExport();
               toast.success("Project exported");
@@ -96,7 +100,7 @@ export function StoragePanel({
           >
             Export JSON
           </Button>
-          <div className="flex-1">
+          <div className="flex-1" data-testid="import-btn">
             <FileInput
               accept=".json"
               onChange={(file) => {

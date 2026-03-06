@@ -417,6 +417,12 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   },
 }));
 
+// Expose store for E2E tests (dev only)
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as unknown as Record<string, unknown>).__PLANNER_STORE__ =
+    usePlannerStore;
+}
+
 // Memoized selectors — return stable references when the underlying data hasn't changed
 let _cachedObjectsRef: Map<number, PlannerObject> | null = null;
 let _cachedVisible: PlannerObject[] = [];

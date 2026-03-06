@@ -45,6 +45,7 @@ export function Sidebar() {
       )}
 
       <aside
+        data-testid="sidebar"
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-[340px] bg-planner-sidebar p-5 overflow-y-auto shrink-0 border-r border-planner-accent",
           "transition-transform duration-200 ease-in-out",
@@ -64,6 +65,7 @@ export function Sidebar() {
           <ToggleGroup
             type="single"
             value={isCleanup ? "cleanup" : "normal"}
+            data-testid="mode-toggle"
             onValueChange={(v) => {
               if (v === "cleanup") ctx.onEnterCleanupMode();
               else if (v === "normal") ctx.onExitCleanupMode();

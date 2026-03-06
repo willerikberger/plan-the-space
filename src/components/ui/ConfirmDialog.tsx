@@ -36,9 +36,12 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel data-testid="confirm-cancel-btn">
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
+            data-testid="confirm-action-btn"
             onClick={() => {
               onConfirm();
             }}

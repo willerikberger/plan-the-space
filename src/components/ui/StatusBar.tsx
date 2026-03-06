@@ -11,6 +11,7 @@ export const StatusBar = memo(function StatusBar() {
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      data-testid="status-bar"
       className="px-5 py-2 min-h-[1.5rem] bg-planner-sidebar text-xs text-planner-text-muted border-t border-planner-accent"
     >
       {message}

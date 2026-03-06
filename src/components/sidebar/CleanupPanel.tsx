@@ -32,6 +32,7 @@ export function CleanupPanel({
           className="bg-planner-calibration hover:bg-planner-calibration-hover text-black border-0"
           onClick={onDrawMask}
           disabled={mode === "drawing-mask"}
+          data-testid="draw-mask-btn"
         >
           {mode === "drawing-mask"
             ? "Drawing... Click & Drag"
@@ -51,6 +52,7 @@ export function CleanupPanel({
       <Button
         className="bg-planner-success hover:bg-planner-cleanup-hover text-white"
         onClick={onExitCleanup}
+        data-testid="exit-cleanup-btn"
       >
         Exit Cleanup Mode
       </Button>

@@ -94,6 +94,7 @@ export function ProjectCard({
             setMenuOpen(!menuOpen);
           }}
           aria-label="Project menu"
+          data-testid={`project-menu-${project.id}`}
         >
           <MoreVertical size={14} />
         </Button>
@@ -109,6 +110,7 @@ export function ProjectCard({
                 setMenuOpen(false);
                 onRename(project.id);
               }}
+              data-testid={`project-rename-${project.id}`}
             >
               <Pencil size={12} /> Rename
             </button>
@@ -118,6 +120,7 @@ export function ProjectCard({
                 setMenuOpen(false);
                 onDuplicate(project.id);
               }}
+              data-testid={`project-duplicate-${project.id}`}
             >
               <Copy size={12} /> Duplicate
             </button>
@@ -127,6 +130,7 @@ export function ProjectCard({
                 setMenuOpen(false);
                 onDelete(project.id);
               }}
+              data-testid={`project-delete-${project.id}`}
             >
               <Trash2 size={12} /> Delete
             </button>

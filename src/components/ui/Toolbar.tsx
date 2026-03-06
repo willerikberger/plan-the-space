@@ -53,17 +53,26 @@ export function Toolbar({
           className="p-1.5 rounded text-planner-text-muted hover:text-planner-text hover:bg-planner-accent transition-colors"
           aria-label="Go to project picker"
           title="Home"
+          data-testid="home-btn"
         >
           <Home size={16} />
         </button>
       )}
       {projectName && (
-        <span className="text-sm font-medium text-planner-text truncate max-w-48">
+        <span
+          className="text-sm font-medium text-planner-text truncate max-w-48"
+          data-testid="project-name"
+        >
           {projectName}
         </span>
       )}
-      <span className={modeClass}>{modeLabel}</span>
-      <span className="text-sm text-planner-text-muted">
+      <span className={modeClass} data-testid="mode-badge">
+        {modeLabel}
+      </span>
+      <span
+        className="text-sm text-planner-text-muted"
+        data-testid="scale-display"
+      >
         {pixelsPerMeter ? (
           <>
             Scale:{" "}
@@ -81,6 +90,7 @@ export function Toolbar({
         <button
           onClick={onUndo}
           disabled={!historyState.canUndo}
+          data-testid="undo-btn"
           className={cn(
             "p-1.5 rounded transition-colors",
             historyState.canUndo
@@ -103,6 +113,7 @@ export function Toolbar({
         <button
           onClick={onRedo}
           disabled={!historyState.canRedo}
+          data-testid="redo-btn"
           className={cn(
             "p-1.5 rounded transition-colors",
             historyState.canRedo

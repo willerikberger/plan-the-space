@@ -53,15 +53,22 @@ export const ObjectList = memo(function ObjectList({
   const visibleObjects = usePlannerStore(selectVisibleObjects);
 
   return (
-    <div className="mb-6">
+    <div className="mb-6" data-testid="object-list">
       <h2 className="text-xs uppercase tracking-wide text-planner-primary mb-3 pb-2 border-b border-planner-accent font-semibold flex items-center gap-2">
         Objects
-        <Badge variant="secondary" className="text-[10px]">
+        <Badge
+          variant="secondary"
+          className="text-[10px]"
+          data-testid="object-count"
+        >
           {visibleObjects.length}
         </Badge>
       </h2>
       {visibleObjects.length === 0 ? (
-        <p className="text-planner-text-dim text-sm">
+        <p
+          className="text-planner-text-dim text-sm"
+          data-testid="object-list-empty"
+        >
           No objects yet. Set the scale, then add shapes or lines above.
         </p>
       ) : (
@@ -72,6 +79,7 @@ export const ObjectList = memo(function ObjectList({
             return (
               <div
                 key={obj.id}
+                data-testid={`object-item-${obj.id}`}
                 className={cn(
                   "flex items-center gap-2 p-2.5 bg-planner-accent rounded-md text-sm",
                   isSelected && "border-2 border-planner-primary",

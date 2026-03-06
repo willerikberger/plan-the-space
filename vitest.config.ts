@@ -3,6 +3,7 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    exclude: ["node_modules/**", "e2e/**"],
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./src/__tests__/setup.ts"],

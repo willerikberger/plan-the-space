@@ -54,11 +54,19 @@ export function CalibrationPanel({
       </div>
       <div className="flex gap-2 mb-3">
         {mode !== "calibrating" ? (
-          <Button onClick={onStartCalibration} disabled={!hasBackgroundImage}>
+          <Button
+            onClick={onStartCalibration}
+            disabled={!hasBackgroundImage}
+            data-testid="start-calibration-btn"
+          >
             Start Calibration
           </Button>
         ) : (
-          <Button variant="secondary" onClick={onCancelCalibration}>
+          <Button
+            variant="secondary"
+            onClick={onCancelCalibration}
+            data-testid="cancel-calibration-btn"
+          >
             Cancel
           </Button>
         )}
@@ -102,7 +110,9 @@ export function CalibrationPanel({
               {error}
             </p>
           )}
-          <Button onClick={handleApply}>Apply Scale</Button>
+          <Button onClick={handleApply} data-testid="apply-calibration-btn">
+            Apply Scale
+          </Button>
         </div>
       )}
     </div>
