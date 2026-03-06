@@ -11,9 +11,9 @@ import path from "path";
 test.describe("Save & Load", () => {
   test("manual save shows toast", async ({ page, calibratedProject }) => {
     await page.getByTestId("save-btn").click();
-    await expect(page.locator("[data-sonner-toast]")).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page.locator("[data-sonner-toast]").filter({ hasText: "Project saved" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("manual load shows toast", async ({ page, calibratedProject }) => {
@@ -22,9 +22,9 @@ test.describe("Save & Load", () => {
     await page.waitForTimeout(500);
 
     await page.getByTestId("load-btn").click();
-    await expect(page.locator("[data-sonner-toast]")).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page.locator("[data-sonner-toast]").filter({ hasText: "Project loaded" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("save and reload preserves data", async ({
@@ -71,9 +71,11 @@ test.describe("Save & Load", () => {
     await page.getByTestId("confirm-action-btn").click();
 
     // Toast should show
-    await expect(page.locator("[data-sonner-toast]")).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Storage cleared" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("cancel clear preserves data", async ({ page, calibratedProject }) => {
@@ -103,40 +105,40 @@ test.describe("Save & Load", () => {
     page,
     calibratedProject,
   }) => {
-    const fileInput = page
-      .getByTestId("import-btn")
-      .locator('input[type="file"]');
-    await fileInput.setInputFiles(
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      page.getByTestId("import-btn").locator("button").click(),
+    ]);
+    await fileChooser.setFiles(
       path.join(__dirname, "../fixtures/test-assets/valid-project.json"),
     );
 
-    // Wait for import to process
-    await page.waitForTimeout(1000);
-
-    // Should show a toast or status indicating success
-    await expect(page.locator("[data-sonner-toast]")).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show a toast indicating success
+    await expect(
+      page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Project imported" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("import invalid JSON shows error", async ({
     page,
     calibratedProject,
   }) => {
-    const fileInput = page
-      .getByTestId("import-btn")
-      .locator('input[type="file"]');
-    await fileInput.setInputFiles(
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      page.getByTestId("import-btn").locator("button").click(),
+    ]);
+    await fileChooser.setFiles(
       path.join(__dirname, "../fixtures/test-assets/invalid-project.json"),
     );
 
-    // Wait for import to process
-    await page.waitForTimeout(1000);
-
-    // Should show error toast or status message
-    await expect(page.locator("[data-sonner-toast]")).toBeVisible({
-      timeout: 5000,
-    });
+    // Should show error toast
+    await expect(
+      page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: /fail|error|invalid/i }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("auto-save triggers after delay", async ({

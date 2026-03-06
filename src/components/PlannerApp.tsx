@@ -224,6 +224,7 @@ export default function PlannerApp() {
       confirmLabel: "Clear Storage",
       onConfirm: () => {
         canvasRef.current?.clearStorage();
+        toast.success("Storage cleared");
       },
     });
   }, []);

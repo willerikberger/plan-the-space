@@ -103,9 +103,13 @@ export function StoragePanel({
           <div className="flex-1" data-testid="import-btn">
             <FileInput
               accept=".json"
-              onChange={(file) => {
-                onImport(file);
-                toast.success("Project imported");
+              onChange={async (file) => {
+                try {
+                  await onImport(file);
+                  toast.success("Project imported");
+                } catch {
+                  toast.error("Failed to import project");
+                }
               }}
               label="Import JSON"
             />

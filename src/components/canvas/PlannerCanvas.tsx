@@ -562,7 +562,7 @@ export function PlannerCanvas({
           .getState()
           .setStatusMessage("Failed to read import file");
         console.error("Import file error:", err);
-        return;
+        throw err;
       }
 
       if (!validateProjectData(data)) {
@@ -570,7 +570,7 @@ export function PlannerCanvas({
           .getState()
           .setStatusMessage("Import file contains invalid project data");
         console.error("Invalid imported project data:", data);
-        return;
+        throw new Error("Import file contains invalid project data");
       }
 
       let deserialized;
@@ -581,7 +581,7 @@ export function PlannerCanvas({
           .getState()
           .setStatusMessage("Failed to parse imported project");
         console.error("Import deserialization error:", err);
-        return;
+        throw err;
       }
 
       // Safe to clear now — data is validated
@@ -614,6 +614,7 @@ export function PlannerCanvas({
           .getState()
           .setStatusMessage("Failed to import project onto canvas");
         console.error("Import load error:", err);
+        throw err;
       }
     },
     [

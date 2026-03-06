@@ -1,6 +1,6 @@
 # E2E Failing Tests
 
-Pre-existing failures in the Playwright E2E suite (138 total, 92 passing, 46 failing).
+Pre-existing failures in the Playwright E2E suite (138 total, 96 passing, 42 failing).
 All failures confirmed pre-existing as of commit `edbbb0d`.
 
 Run all: `npx playwright test`
@@ -68,14 +68,14 @@ Run one: `npx playwright test e2e/specs/<file> --grep "<test name>"`
 
 ## Save & Load — toast detection and file import
 
-| #   | Test                               | File:Line             | Status |
-| --- | ---------------------------------- | --------------------- | ------ |
-| 23  | manual load shows toast            | save-load.spec.ts:19  | TODO   |
-| 24  | clear storage with confirmation    | save-load.spec.ts:58  | TODO   |
-| 25  | import valid JSON restores project | save-load.spec.ts:102 | TODO   |
-| 26  | import invalid JSON shows error    | save-load.spec.ts:122 | TODO   |
+| #   | Test                               | File:Line             | Status   |
+| --- | ---------------------------------- | --------------------- | -------- |
+| 23  | manual load shows toast            | save-load.spec.ts:19  | RESOLVED |
+| 24  | clear storage with confirmation    | save-load.spec.ts:58  | RESOLVED |
+| 25  | import valid JSON restores project | save-load.spec.ts:104 | RESOLVED |
+| 26  | import invalid JSON shows error    | save-load.spec.ts:124 | RESOLVED |
 
-**Pattern:** Toast detection (`[data-sonner-toast]`) may be timing-sensitive. Import tests use `locator('input[type="file"]')` inside the import button which may not match the actual DOM structure.
+**Fixed:** (1) Filter toast selectors by text to avoid strict mode violations with multiple toasts. (2) Use `filechooser` event for import tests instead of `setInputFiles`. (3) `importJson` now throws on failure so `StoragePanel` can show error vs success toast. (4) Added "Storage cleared" toast to clear storage handler.
 
 ---
 
