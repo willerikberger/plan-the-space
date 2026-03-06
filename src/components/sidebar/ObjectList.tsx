@@ -2,6 +2,8 @@
 
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
 import type { PlannerObject } from "@/lib/types";
 
@@ -54,32 +56,33 @@ export const ObjectList = memo(function ObjectList({
     <div className="mb-6">
       <h2 className="text-xs uppercase tracking-wide text-planner-primary mb-3 pb-2 border-b border-planner-accent font-semibold flex items-center gap-2">
         Objects
-        <span className="text-[10px] px-1.5 py-0.5 bg-planner-accent rounded text-planner-text-muted">
+        <Badge variant="secondary" className="text-[10px]">
           {visibleObjects.length}
-        </span>
+        </Badge>
       </h2>
       {visibleObjects.length === 0 ? (
         <p className="text-planner-text-dim text-sm">
           No objects yet. Set the scale, then add shapes or lines above.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {visibleObjects.map((obj) => {
             const isSelected = selectedObjectId === obj.id;
             const color = objectColor(obj);
             return (
               <div
                 key={obj.id}
-                className={`flex items-center gap-2 p-2.5 bg-planner-accent rounded-md text-sm ${
-                  isSelected ? "border-2 border-planner-primary" : ""
-                }`}
+                className={cn(
+                  "flex items-center gap-2 p-2.5 bg-planner-accent rounded-md text-sm",
+                  isSelected && "border-2 border-planner-primary",
+                )}
               >
                 <span className="w-5 text-center shrink-0">
                   <ObjectIcon type={obj.type} />
                 </span>
                 {color && (
                   <span
-                    className="w-4 h-4 rounded shrink-0"
+                    className="size-4 rounded shrink-0"
                     style={{ background: color }}
                   />
                 )}

@@ -24,7 +24,7 @@ export function LinePanel({
   const isCalibrated = usePlannerStore((s) => s.pixelsPerMeter !== null);
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div>
         <Label className="text-planner-text-secondary text-xs">
           Line Color

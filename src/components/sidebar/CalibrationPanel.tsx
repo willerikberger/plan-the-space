@@ -46,7 +46,7 @@ export function CalibrationPanel({
         2. Set Scale
       </h2>
       <div className="bg-planner-accent p-3 rounded-md text-sm leading-relaxed mb-3">
-        <ol className="list-decimal ml-5 space-y-1">
+        <ol className="list-decimal ml-5 flex flex-col gap-1">
           <li>Click &quot;Start Calibration&quot;</li>
           <li>Draw a line on a known dimension</li>
           <li>Enter the real-world length</li>
@@ -64,7 +64,7 @@ export function CalibrationPanel({
         )}
       </div>
       {showInput && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 flex flex-col gap-2">
           <Label
             className="text-planner-text-secondary"
             htmlFor="calibration-length"

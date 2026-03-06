@@ -66,7 +66,7 @@ export function NewProjectWizard({
         </DialogHeader>
 
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <div>
               <Label htmlFor="project-name">Project Name *</Label>
               <Input
@@ -100,7 +100,7 @@ export function NewProjectWizard({
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <div>
               <Label>Background Image (optional)</Label>
               <p className="text-xs text-planner-text-muted mt-1 mb-2">

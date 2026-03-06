@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/FileInput";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { checkProjectExists } from "@/lib/storage/indexeddb";
 
 interface StoragePanelProps {
@@ -47,10 +49,24 @@ export function StoragePanel({
       </div>
 
       <div className="flex gap-2 mb-2">
-        <Button variant="secondary" size="sm" onClick={onSave}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            onSave();
+            toast.success("Project saved");
+          }}
+        >
           Save Now
         </Button>
-        <Button variant="secondary" size="sm" onClick={onLoad}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            onLoad();
+            toast.success("Project loaded");
+          }}
+        >
           Load
         </Button>
         <Button
@@ -64,16 +80,31 @@ export function StoragePanel({
       </div>
       <p className="text-xs text-planner-text-dim mb-4">{storageStatus}</p>
 
-      <div className="border-t border-planner-accent pt-4">
+      <Separator className="my-4 bg-planner-accent" />
+      <div>
         <label className="text-planner-text-secondary text-xs block mb-1.5">
           File Export/Import
         </label>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={onExport}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              onExport();
+              toast.success("Project exported");
+            }}
+          >
             Export JSON
           </Button>
           <div className="flex-1">
-            <FileInput accept=".json" onChange={onImport} label="Import JSON" />
+            <FileInput
+              accept=".json"
+              onChange={(file) => {
+                onImport(file);
+                toast.success("Project imported");
+              }}
+              label="Import JSON"
+            />
           </div>
         </div>
       </div>

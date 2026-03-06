@@ -43,7 +43,7 @@ export const ColorPicker = memo(function ColorPicker({
             aria-checked={isSelected}
             aria-label={name}
             className={cn(
-              "w-10 h-10 rounded-md cursor-pointer border-2 transition-transform hover:scale-110",
+              "size-10 rounded-md cursor-pointer border-2 transition-transform hover:scale-110",
               isSelected ? "border-white" : "border-transparent",
             )}
             style={{ background: displayColor }}

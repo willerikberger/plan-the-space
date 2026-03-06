@@ -22,6 +22,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { toast } from "sonner";
 import { usePlannerStore } from "@/lib/store";
 import { getDefaultAdapter } from "@/lib/storage/indexeddb";
 import {
@@ -102,6 +103,7 @@ export default function PlannerApp() {
         name: result.name,
         description: result.description,
       });
+      toast.success(`Project "${result.name}" created`);
       // If a background image was selected, load it after the canvas mounts
       if (result.backgroundImage) {
         const file = result.backgroundImage;
@@ -148,6 +150,7 @@ export default function PlannerApp() {
   const handleDuplicateProject = useCallback(
     async (id: string) => {
       await duplicateProject(adapter, id);
+      toast.success("Project duplicated");
     },
     [adapter],
   );
@@ -155,6 +158,7 @@ export default function PlannerApp() {
   const handleDeleteProject = useCallback(
     async (id: string) => {
       await softDeleteProject(adapter, id);
+      toast.success("Project moved to trash");
     },
     [adapter],
   );
@@ -162,6 +166,7 @@ export default function PlannerApp() {
   const handleRestoreProject = useCallback(
     async (id: string) => {
       await restoreProject(adapter, id);
+      toast.success("Project restored");
     },
     [adapter],
   );
@@ -169,6 +174,7 @@ export default function PlannerApp() {
   const handlePermanentDeleteProject = useCallback(
     async (id: string) => {
       await permanentDeleteProject(adapter, id);
+      toast.success("Project permanently deleted");
     },
     [adapter],
   );

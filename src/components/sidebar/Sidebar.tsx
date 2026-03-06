@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/FileInput";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlannerStore } from "@/lib/store";
 import { useSidebarContext } from "./SidebarContext";
@@ -43,12 +45,12 @@ export function Sidebar() {
       )}
 
       <aside
-        className={`
-          fixed inset-y-0 left-0 z-40 w-[340px] bg-planner-sidebar p-5 overflow-y-auto shrink-0 border-r border-planner-accent
-          transition-transform duration-200 ease-in-out
-          md:static md:translate-x-0
-          ${open ? "translate-x-0" : "-translate-x-full"}
-        `}
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 w-[340px] bg-planner-sidebar p-5 overflow-y-auto shrink-0 border-r border-planner-accent",
+          "transition-transform duration-200 ease-in-out",
+          "md:static md:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
       >
         <h1 className="text-xl font-bold text-planner-primary mb-1">
           Plan the Space
@@ -58,27 +60,29 @@ export function Sidebar() {
         </p>
 
         {/* Mode Toggle */}
-        <div className="mb-4" role="group" aria-label="Canvas mode">
-          <div className="flex bg-planner-accent rounded-md overflow-hidden">
-            <button
-              aria-pressed={!isCleanup}
-              className={`flex-1 py-2.5 text-sm transition-colors ${
-                !isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
-              }`}
-              onClick={() => isCleanup && ctx.onExitCleanupMode()}
+        <div className="mb-4">
+          <ToggleGroup
+            type="single"
+            value={isCleanup ? "cleanup" : "normal"}
+            onValueChange={(v) => {
+              if (v === "cleanup") ctx.onEnterCleanupMode();
+              else if (v === "normal") ctx.onExitCleanupMode();
+            }}
+            className="w-full bg-planner-accent rounded-md overflow-hidden"
+          >
+            <ToggleGroupItem
+              value="normal"
+              className="flex-1 py-2.5 text-sm data-[state=on]:bg-planner-primary"
             >
               Normal Mode
-            </button>
-            <button
-              aria-pressed={isCleanup}
-              className={`flex-1 py-2.5 text-sm transition-colors ${
-                isCleanup ? "bg-planner-primary" : "hover:bg-planner-hover"
-              }`}
-              onClick={() => !isCleanup && ctx.onEnterCleanupMode()}
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="cleanup"
+              className="flex-1 py-2.5 text-sm data-[state=on]:bg-planner-primary"
             >
               Cleanup Mode
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {/* Cleanup Panel */}

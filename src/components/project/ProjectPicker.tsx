@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Plus, Trash2, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { ProjectCard } from "./ProjectCard";
 import type { ProjectListItem } from "@/lib/types";
 
@@ -87,7 +88,8 @@ export function ProjectPicker({
 
         {/* Trash section */}
         {trashedProjects.length > 0 && (
-          <div className="mt-8 border-t border-planner-accent pt-4">
+          <div className="mt-8 pt-4">
+            <Separator className="mb-4 bg-planner-accent" />
             <button
               className="flex items-center gap-2 text-sm text-planner-text-muted hover:text-planner-text transition-colors"
               onClick={() => setTrashOpen(!trashOpen)}
@@ -97,7 +99,7 @@ export function ProjectPicker({
             </button>
 
             {trashOpen && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 flex flex-col gap-2">
                 {trashedProjects.map((project) => (
                   <div
                     key={project.id}

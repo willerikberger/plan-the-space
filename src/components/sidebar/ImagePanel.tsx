@@ -8,7 +8,7 @@ interface ImagePanelProps {
 
 export function ImagePanel({ onAddOverlayImage }: ImagePanelProps) {
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div>
         <label className="text-planner-text-secondary text-xs block mb-1.5">
           Add Overlay Image
