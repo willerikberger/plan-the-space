@@ -37,7 +37,7 @@ describe("Multi-project end-to-end workflow", () => {
 
     // 2. Create first project
     const id1 = await createProject(adapter, { name: "Project A" });
-    expect(usePlannerStore.getState().activeView).toBe("canvas");
+    expect(usePlannerStore.getState().activeView).toBe("picker");
     expect(usePlannerStore.getState().activeProjectId).toBe(id1);
 
     // 3. "Add objects" via store and save

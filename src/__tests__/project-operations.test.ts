@@ -45,7 +45,7 @@ describe("createProject", () => {
 
     const store = usePlannerStore.getState();
     expect(store.activeProjectId).toBe(id);
-    expect(store.activeView).toBe("canvas");
+    expect(store.activeView).toBe("picker");
     expect(store.projects).toHaveLength(1);
     expect(store.projects[0].name).toBe("My Garden");
   });
@@ -97,7 +97,7 @@ describe("openProject", () => {
 
     const store = usePlannerStore.getState();
     expect(store.activeProjectId).toBe(record.id);
-    expect(store.activeView).toBe("canvas");
+    expect(store.activeView).toBe("picker");
     expect(store.pixelsPerMeter).toBe(75);
 
     // Should save lastOpenedProjectId

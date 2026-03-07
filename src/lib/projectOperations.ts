@@ -37,7 +37,10 @@ function createEmptyProjectData(): SerializedProject {
   };
 }
 
-/** Create a new empty project, save it, and switch to it */
+/**
+ * Create a new empty project, save it, and set it as active.
+ * Callers are responsible for switching to canvas view via `setActiveView("canvas")`.
+ */
 export async function createProject(
   adapter: StorageAdapter,
   opts: { name: string; description?: string },
@@ -52,7 +55,6 @@ export async function createProject(
   const store = usePlannerStore.getState();
   store.addProject(toListItem(record));
   store.setActiveProjectId(record.id);
-  store.setActiveView("canvas");
   store.reset();
 
   return record.id;
@@ -88,7 +90,10 @@ export interface OpenProjectResult {
   layers?: Record<LayerGroup, LayerEntry[]>;
 }
 
-/** Open an existing project by loading its data into the store */
+/**
+ * Open an existing project by loading its data into the store.
+ * Callers are responsible for switching to canvas view via `setActiveView("canvas")`.
+ */
 export async function openProject(
   adapter: StorageAdapter,
   projectId: string,
@@ -114,7 +119,6 @@ export async function openProject(
   }
 
   store.setActiveProjectId(projectId);
-  store.setActiveView("canvas");
 
   await adapter.saveAppState({ lastOpenedProjectId: projectId });
 

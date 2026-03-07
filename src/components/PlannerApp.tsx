@@ -110,6 +110,7 @@ export default function PlannerApp() {
         pendingCanvasAction.current = (handle) =>
           handle.loadBackgroundImage(file);
       }
+      usePlannerStore.getState().setActiveView("canvas");
     },
     [adapter],
   );
@@ -127,6 +128,7 @@ export default function PlannerApp() {
             result.layers,
           );
       }
+      usePlannerStore.getState().setActiveView("canvas");
     },
     [adapter],
   );
