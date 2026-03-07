@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ObjectList } from "@/components/sidebar/ObjectList";
-import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
+import {
+  usePlannerStore,
+  selectVisibleObjects,
+  selectRenderOrder,
+} from "@/lib/store";
 import type { ShapeObject, LineObject, OverlayImageObject } from "@/lib/types";
 
 vi.mock("@/lib/store", () => ({
   usePlannerStore: vi.fn(),
   selectVisibleObjects: vi.fn(),
+  selectRenderOrder: vi.fn(),
 }));
 
 const mockUsePlannerStore = usePlannerStore as unknown as ReturnType<
@@ -15,11 +20,15 @@ const mockUsePlannerStore = usePlannerStore as unknown as ReturnType<
 const mockSelectVisibleObjects = selectVisibleObjects as unknown as ReturnType<
   typeof vi.fn
 >;
+const mockSelectRenderOrder = selectRenderOrder as unknown as ReturnType<
+  typeof vi.fn
+>;
 
 function setupStoreMock(
   objects: (ShapeObject | LineObject | OverlayImageObject)[] = [],
 ) {
   mockSelectVisibleObjects.mockReturnValue(objects);
+  mockSelectRenderOrder.mockReturnValue(objects.map((obj) => obj.id));
   const state = {
     objects: new Map(objects.map((obj) => [obj.id, obj])),
     layers: {
@@ -215,10 +224,10 @@ describe("ObjectList", () => {
     expect(selectButtons).toHaveLength(2);
 
     fireEvent.click(selectButtons[0]);
-    expect(defaultProps.onSelect).toHaveBeenCalledWith(1);
+    expect(defaultProps.onSelect).toHaveBeenCalledWith(2);
 
     fireEvent.click(selectButtons[1]);
-    expect(defaultProps.onSelect).toHaveBeenCalledWith(2);
+    expect(defaultProps.onSelect).toHaveBeenCalledWith(1);
   });
 
   // --------------------------------------------------

@@ -5,8 +5,12 @@ import { ArrowDown, ArrowUp, ImageIcon, Ruler, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
-import type { LayerEntry, PlannerObject } from "@/lib/types";
+import {
+  usePlannerStore,
+  selectVisibleObjects,
+  selectRenderOrder,
+} from "@/lib/store";
+import type { PlannerObject } from "@/lib/types";
 
 interface ObjectListProps {
   selectedObjectId: number | null;
@@ -44,29 +48,6 @@ function objectColor(obj: PlannerObject): string | null {
   return null;
 }
 
-function canonicalVisibleOrder(
-  visibleObjects: PlannerObject[],
-  contentLayer: LayerEntry[],
-): number[] {
-  const expected = visibleObjects.map((obj) => obj.id);
-  const expectedSet = new Set(expected);
-  const fromLayer = [...contentLayer]
-    .sort((a, b) => a.zIndex - b.zIndex)
-    .map((entry) => entry.objectId)
-    .filter((id) => expectedSet.has(id));
-  const seen = new Set<number>();
-  const ordered: number[] = [];
-  for (const id of fromLayer) {
-    if (seen.has(id)) continue;
-    seen.add(id);
-    ordered.push(id);
-  }
-  for (const id of expected) {
-    if (!seen.has(id)) ordered.push(id);
-  }
-  return ordered;
-}
-
 export const ObjectList = memo(function ObjectList({
   selectedObjectId,
   onSelect,
@@ -75,18 +56,38 @@ export const ObjectList = memo(function ObjectList({
   onMoveDown,
 }: ObjectListProps) {
   const visibleObjects = usePlannerStore(selectVisibleObjects);
-  const contentLayer = usePlannerStore((s) => s.layers.content);
-  const orderedContentIds = useMemo(
-    () => canonicalVisibleOrder(visibleObjects, contentLayer),
-    [visibleObjects, contentLayer],
+  const renderOrder = usePlannerStore(selectRenderOrder);
+  const visibleIdSet = useMemo(
+    () => new Set(visibleObjects.map((obj) => obj.id)),
+    [visibleObjects],
+  );
+  const orderedContentIdsBottomFirst = useMemo(
+    () => renderOrder.filter((id) => visibleIdSet.has(id)),
+    [renderOrder, visibleIdSet],
+  );
+  const orderedContentIdsTopFirst = useMemo(
+    () => [...orderedContentIdsBottomFirst].reverse(),
+    [orderedContentIdsBottomFirst],
+  );
+  const objectById = useMemo(() => {
+    const map = new Map<number, PlannerObject>();
+    for (const obj of visibleObjects) map.set(obj.id, obj);
+    return map;
+  }, [visibleObjects]);
+  const orderedObjects = useMemo(
+    () =>
+      orderedContentIdsTopFirst
+        .map((id) => objectById.get(id))
+        .filter((obj): obj is PlannerObject => Boolean(obj)),
+    [orderedContentIdsTopFirst, objectById],
   );
   const indexByObjectId = useMemo(() => {
     const map = new Map<number, number>();
-    orderedContentIds.forEach((id, index) => {
+    orderedContentIdsTopFirst.forEach((id, index) => {
       map.set(id, index);
     });
     return map;
-  }, [orderedContentIds]);
+  }, [orderedContentIdsTopFirst]);
 
   return (
     <div className="mb-6" data-testid="object-list">
@@ -109,13 +110,14 @@ export const ObjectList = memo(function ObjectList({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {visibleObjects.map((obj) => {
+          {orderedObjects.map((obj) => {
             const isSelected = selectedObjectId === obj.id;
             const color = objectColor(obj);
             const layerIndex = indexByObjectId.get(obj.id);
-            const canMoveUp =
-              layerIndex != null && layerIndex < orderedContentIds.length - 1;
-            const canMoveDown = layerIndex != null && layerIndex > 0;
+            const canMoveUp = layerIndex != null && layerIndex > 0;
+            const canMoveDown =
+              layerIndex != null &&
+              layerIndex < orderedContentIdsTopFirst.length - 1;
             return (
               <div
                 key={obj.id}

@@ -514,6 +514,9 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
 // Memoized selectors — return stable references when the underlying data hasn't changed
 let _cachedObjectsRef: Map<number, PlannerObject> | null = null;
 let _cachedVisible: PlannerObject[] = [];
+let _cachedRenderOrderObjectsRef: Map<number, PlannerObject> | null = null;
+let _cachedRenderOrderLayersRef: PlannerStore["layers"] | null = null;
+let _cachedRenderOrder: number[] = [];
 
 export const selectVisibleObjects = (state: PlannerStore): PlannerObject[] => {
   if (state.objects === _cachedObjectsRef) return _cachedVisible;
@@ -530,6 +533,19 @@ export const selectVisibleObjects = (state: PlannerStore): PlannerObject[] => {
   }
   _cachedVisible = result;
   return result;
+};
+
+export const selectRenderOrder = (state: PlannerStore): number[] => {
+  if (
+    state.objects === _cachedRenderOrderObjectsRef &&
+    state.layers === _cachedRenderOrderLayersRef
+  ) {
+    return _cachedRenderOrder;
+  }
+  _cachedRenderOrderObjectsRef = state.objects;
+  _cachedRenderOrderLayersRef = state.layers;
+  _cachedRenderOrder = state.getRenderOrder();
+  return _cachedRenderOrder;
 };
 
 export const selectObjectById = (
