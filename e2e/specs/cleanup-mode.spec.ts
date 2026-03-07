@@ -44,6 +44,56 @@ test.describe("Cleanup Mode", () => {
     expect(hasMask).toBe(true);
   });
 
+  test("drawing mask does not move background image", async ({
+    page,
+    calibratedProject,
+  }) => {
+    await page.getByRole("radio", { name: "Cleanup Mode" }).click();
+    await waitForMode(page, "cleanup");
+    await page.getByTestId("draw-mask-btn").click();
+    await waitForMode(page, "drawing-mask");
+
+    const before = await page.evaluate(() => {
+      const fabric = (
+        document.querySelector(
+          'canvas[aria-label="Floor plan design canvas"]',
+        ) as any
+      )?.__fabric;
+      if (!fabric) return null;
+      const bg = fabric
+        .getObjects()
+        .find((obj: any) => obj.objectType === "backgroundImage");
+      if (!bg) return null;
+      return {
+        left: bg.left ?? 0,
+        top: bg.top ?? 0,
+      };
+    });
+    expect(before).toBeTruthy();
+
+    await canvasDrag(page, { x: 220, y: 140 }, { x: 340, y: 260 });
+    await waitForMode(page, "cleanup");
+
+    const after = await page.evaluate(() => {
+      const fabric = (
+        document.querySelector(
+          'canvas[aria-label="Floor plan design canvas"]',
+        ) as any
+      )?.__fabric;
+      if (!fabric) return null;
+      const bg = fabric
+        .getObjects()
+        .find((obj: any) => obj.objectType === "backgroundImage");
+      if (!bg) return null;
+      return {
+        left: bg.left ?? 0,
+        top: bg.top ?? 0,
+      };
+    });
+
+    expect(after).toEqual(before);
+  });
+
   test("mask too small rejected", async ({ page, calibratedProject }) => {
     await page.getByRole("radio", { name: "Cleanup Mode" }).click();
     await waitForMode(page, "cleanup");
@@ -99,7 +149,9 @@ test.describe("Cleanup Mode", () => {
       return fabric
         .getObjects()
         .filter(
-          (obj: any) => obj.objectType === "shape" || obj.objectType === "line",
+          (obj: any) =>
+            (obj.objectType === "shape" || obj.objectType === "line") &&
+            obj.visible !== false,
         ).length;
     });
     expect(fabricObjectCount).toBe(0);

@@ -16,6 +16,7 @@ export function useKeyboardShortcuts(
   actions: {
     cancelCalibration: () => void;
     cancelLineDrawing: () => void;
+    cancelMaskDrawing: () => void;
     deleteSelected: () => void;
     undo: () => Promise<void>;
     redo: () => Promise<void>;
@@ -52,9 +53,7 @@ export function useKeyboardShortcuts(
         if (mode === "calibrating") actionsRef.current.cancelCalibration();
         if (mode === "drawing-line") actionsRef.current.cancelLineDrawing();
         if (mode === "drawing-mask") {
-          usePlannerStore.getState().setMode("cleanup");
-          canvas.defaultCursor = "default";
-          canvas.selection = true;
+          actionsRef.current.cancelMaskDrawing();
         }
         canvas.discardActiveObject();
         canvas.renderAll();

@@ -30,6 +30,7 @@ export interface UseCleanupReturn {
   enterCleanupMode: () => void;
   exitCleanupMode: () => void;
   startDrawingMask: () => void;
+  cancelDrawingMask: () => void;
   handleMaskDrawStart: (pointer: Point) => void;
   updateMaskRect: (pointer: Point) => void;
   finishMaskRect: () => void;
@@ -73,6 +74,7 @@ export function useCleanup(
     store.setMode("normal");
     store.setStatusMessage("Back to normal mode");
     canvas.defaultCursor = "default";
+    canvas.skipTargetFind = false;
 
     // Show all layers
     const visibility = { background: true, masks: true, content: true };
@@ -103,9 +105,33 @@ export function useCleanup(
     usePlannerStore.getState().setMode("drawing-mask");
     canvas.defaultCursor = "crosshair";
     canvas.selection = false;
+    // While drawing a mask, ignore all existing Fabric targets to prevent
+    // selecting/dragging background images or masks under the pointer.
+    canvas.skipTargetFind = true;
+    canvas.discardActiveObject();
+    canvas.renderAll();
     usePlannerStore
       .getState()
       .setStatusMessage("Click and drag to draw a mask rectangle");
+  }, [fabricCanvasRef]);
+
+  const cancelDrawingMask = useCallback(() => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+
+    if (currentMaskRef.current) {
+      canvas.remove(currentMaskRef.current);
+      currentMaskRef.current = null;
+    }
+    maskStartRef.current = null;
+
+    usePlannerStore.getState().setMode("cleanup");
+    usePlannerStore.getState().setStatusMessage("Mask drawing cancelled");
+    canvas.defaultCursor = "default";
+    canvas.selection = true;
+    canvas.skipTargetFind = false;
+    canvas.discardActiveObject();
+    canvas.renderAll();
   }, [fabricCanvasRef]);
 
   const handleMaskDrawStart = useCallback(
@@ -159,6 +185,9 @@ export function useCleanup(
       usePlannerStore.getState().setStatusMessage("Mask too small, cancelled");
       canvas.defaultCursor = "default";
       canvas.selection = true;
+      canvas.skipTargetFind = false;
+      canvas.discardActiveObject();
+      canvas.renderAll();
       return;
     }
 
@@ -185,6 +214,9 @@ export function useCleanup(
     store.setStatusMessage("Added mask");
     canvas.defaultCursor = "default";
     canvas.selection = true;
+    canvas.skipTargetFind = false;
+    canvas.discardActiveObject();
+    canvas.renderAll();
   }, [fabricCanvasRef, fabricRefsRef]);
 
   const addCleanupImage = useCallback(
@@ -281,6 +313,7 @@ export function useCleanup(
     enterCleanupMode,
     exitCleanupMode,
     startDrawingMask,
+    cancelDrawingMask,
     handleMaskDrawStart,
     updateMaskRect,
     finishMaskRect,

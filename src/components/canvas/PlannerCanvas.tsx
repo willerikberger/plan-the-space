@@ -701,6 +701,7 @@ export function PlannerCanvas({
   useKeyboardShortcuts(fabricCanvasRef, {
     cancelCalibration: calibration.cancelCalibration,
     cancelLineDrawing: lines.cancelLineDrawing,
+    cancelMaskDrawing: cleanup.cancelDrawingMask,
     deleteSelected,
     undo,
     redo,
