@@ -158,6 +158,8 @@ export function useCalibration(
     store.setCalibrationPixelLength(pxLen);
     store.setShowCalibrationInput(true);
     store.setStatusMessage(`Line: ${Math.round(pxLen)}px. Enter meters.`);
+    // Mark drawing as finished so mouse-move no longer drags the line endpoint.
+    startPointRef.current = null;
   }, [fabricCanvasRef]);
 
   const applyCalibration = useCallback(
