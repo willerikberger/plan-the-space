@@ -100,10 +100,17 @@ const createObjectsSlice: StoreSliceCreator<ObjectsSlice> = (set, get) => ({
       const entries = state.layers[group].filter((e) => e.objectId !== obj.id);
       const maxZ =
         entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
+      const withoutObject: Record<LayerGroup, LayerEntry[]> = {
+        background: state.layers.background.filter(
+          (e) => e.objectId !== obj.id,
+        ),
+        masks: state.layers.masks.filter((e) => e.objectId !== obj.id),
+        content: state.layers.content.filter((e) => e.objectId !== obj.id),
+      };
       return {
         objects: next,
         layers: {
-          ...state.layers,
+          ...withoutObject,
           [group]: normalizeLayerEntries([
             ...entries,
             { objectId: obj.id, zIndex: maxZ + 1 },
@@ -227,6 +234,37 @@ function normalizeLayerEntries(entries: LayerEntry[]): LayerEntry[] {
     .map(([objectId], index) => ({ objectId, zIndex: index }));
 }
 
+function expectedObjectIdsForGroup(
+  state: PlannerStore,
+  group: LayerGroup,
+): number[] {
+  const expected: number[] = [];
+  for (const obj of state.objects.values()) {
+    if (layerGroupForType(obj.type) === group) expected.push(obj.id);
+  }
+  return expected;
+}
+
+function canonicalEntriesForGroup(
+  state: PlannerStore,
+  group: LayerGroup,
+): LayerEntry[] {
+  const expectedIds = expectedObjectIdsForGroup(state, group);
+  const expectedSet = new Set(expectedIds);
+  const normalized = normalizeLayerEntries(
+    state.layers[group].filter((entry) => expectedSet.has(entry.objectId)),
+  );
+  const present = new Set(normalized.map((entry) => entry.objectId));
+  const missing = expectedIds.filter((id) => !present.has(id));
+  return [
+    ...normalized,
+    ...missing.map((objectId, index) => ({
+      objectId,
+      zIndex: normalized.length + index,
+    })),
+  ];
+}
+
 const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
   layers: { ...emptyLayers, background: [], masks: [], content: [] },
   layerVisibility: { ...allVisible },
@@ -238,9 +276,16 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
       );
       const maxZ =
         entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
+      const withoutObject: Record<LayerGroup, LayerEntry[]> = {
+        background: state.layers.background.filter(
+          (e) => e.objectId !== objectId,
+        ),
+        masks: state.layers.masks.filter((e) => e.objectId !== objectId),
+        content: state.layers.content.filter((e) => e.objectId !== objectId),
+      };
       return {
         layers: {
-          ...state.layers,
+          ...withoutObject,
           [group]: normalizeLayerEntries([
             ...entries,
             { objectId, zIndex: maxZ + 1 },
@@ -263,61 +308,72 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
 
   moveUpInLayer: (objectId) =>
     set((state) => {
-      for (const group of ["background", "masks", "content"] as const) {
-        const sorted = normalizeLayerEntries(state.layers[group]);
-        const idx = sorted.findIndex((entry) => entry.objectId === objectId);
-        if (idx === -1) continue;
-        if (idx >= sorted.length - 1) return state; // already at top
-        const swapped = [...sorted];
-        [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
-        return {
-          layers: {
-            ...state.layers,
-            [group]: swapped.map((entry, index) => ({
-              ...entry,
-              zIndex: index,
-            })),
-          },
-        };
-      }
-      return state;
+      const obj = state.objects.get(objectId);
+      if (!obj) return state;
+      const group = layerGroupForType(obj.type);
+      const sorted = canonicalEntriesForGroup(state, group);
+      const idx = sorted.findIndex((entry) => entry.objectId === objectId);
+      if (idx === -1 || idx >= sorted.length - 1) return state;
+
+      const swapped = [...sorted];
+      [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
+
+      return {
+        layers: {
+          background:
+            group === "background"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "background"),
+          masks:
+            group === "masks"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "masks"),
+          content:
+            group === "content"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "content"),
+        },
+      };
     }),
 
   moveDownInLayer: (objectId) =>
     set((state) => {
-      for (const group of ["background", "masks", "content"] as const) {
-        const sorted = normalizeLayerEntries(state.layers[group]);
-        const idx = sorted.findIndex((entry) => entry.objectId === objectId);
-        if (idx === -1) continue;
-        if (idx <= 0) return state; // already at bottom
-        const swapped = [...sorted];
-        [swapped[idx], swapped[idx - 1]] = [swapped[idx - 1], swapped[idx]];
-        return {
-          layers: {
-            ...state.layers,
-            [group]: swapped.map((entry, index) => ({
-              ...entry,
-              zIndex: index,
-            })),
-          },
-        };
-      }
-      return state;
+      const obj = state.objects.get(objectId);
+      if (!obj) return state;
+      const group = layerGroupForType(obj.type);
+      const sorted = canonicalEntriesForGroup(state, group);
+      const idx = sorted.findIndex((entry) => entry.objectId === objectId);
+      if (idx === -1 || idx <= 0) return state;
+
+      const swapped = [...sorted];
+      [swapped[idx], swapped[idx - 1]] = [swapped[idx - 1], swapped[idx]];
+
+      return {
+        layers: {
+          background:
+            group === "background"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "background"),
+          masks:
+            group === "masks"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "masks"),
+          content:
+            group === "content"
+              ? swapped.map((entry, index) => ({ ...entry, zIndex: index }))
+              : canonicalEntriesForGroup(state, "content"),
+        },
+      };
     }),
 
   getRenderOrder: () => {
     const state = get();
-    const sortByZ = (group: LayerGroup, entries: LayerEntry[]) =>
-      normalizeLayerEntries(
-        entries.filter((entry) => {
-          const obj = state.objects.get(entry.objectId);
-          return obj ? layerGroupForType(obj.type) === group : false;
-        }),
-      ).map((entry) => entry.objectId);
+    const sortByZ = (group: LayerGroup) =>
+      canonicalEntriesForGroup(state, group).map((entry) => entry.objectId);
     return [
-      ...sortByZ("background", state.layers.background),
-      ...sortByZ("masks", state.layers.masks),
-      ...sortByZ("content", state.layers.content),
+      ...sortByZ("background"),
+      ...sortByZ("masks"),
+      ...sortByZ("content"),
     ];
   },
 

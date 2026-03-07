@@ -30,6 +30,7 @@ function setupStoreMock(
         zIndex: index,
       })),
     },
+    getRenderOrder: () => objects.map((obj) => obj.id),
   };
   mockUsePlannerStore.mockImplementation((selector?: unknown) => {
     if (typeof selector === "function") {

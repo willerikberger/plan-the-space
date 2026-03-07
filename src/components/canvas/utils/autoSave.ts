@@ -39,6 +39,7 @@ export interface ScheduleAutoSaveOptions {
   getFabricState: GetFabricStateFn;
   serializeProject: SerializeProjectFn;
   saveToIDB: SaveToIDBFn;
+  isLoadingProjectRef?: { current: boolean };
 }
 
 /**
@@ -47,14 +48,21 @@ export interface ScheduleAutoSaveOptions {
  * at execution time (inside the timer).
  */
 export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
-  const { isRestoring, timerRef, getFabricState, serializeProject, saveToIDB } =
-    options;
+  const {
+    isRestoring,
+    timerRef,
+    getFabricState,
+    serializeProject,
+    saveToIDB,
+    isLoadingProjectRef,
+  } = options;
   if (isRestoring) return;
   const store = usePlannerStore.getState();
   if (!store.autoSaveEnabled) return;
   if (timerRef.current) clearTimeout(timerRef.current);
   timerRef.current = setTimeout(async () => {
     try {
+      if (isLoadingProjectRef?.current) return;
       const s = usePlannerStore.getState();
       const objects = Array.from(s.objects.values());
       const data = serializeProject(
@@ -76,6 +84,18 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
       console.error("Auto-save error:", err);
     }
   }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+/**
+ * Cancel any pending debounced auto-save.
+ */
+export function cancelAutoSave(timerRef: {
+  current: ReturnType<typeof setTimeout> | null;
+}): void {
+  if (timerRef.current) {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
 }
 
 /**

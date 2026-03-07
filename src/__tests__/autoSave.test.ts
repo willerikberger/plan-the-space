@@ -3,6 +3,7 @@ import { usePlannerStore } from "@/lib/store";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 import {
   scheduleAutoSave,
+  cancelAutoSave,
   handleBeforeUnload,
 } from "@/components/canvas/utils/autoSave";
 import type { ScheduleAutoSaveOptions } from "@/components/canvas/utils/autoSave";
@@ -287,5 +288,51 @@ describe("handleBeforeUnload", () => {
 
     expect(serializeProject).not.toHaveBeenCalled();
     expect(saveToIDB).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cancelAutoSave
+// ---------------------------------------------------------------------------
+describe("cancelAutoSave", () => {
+  it("clears pending timer and prevents save", async () => {
+    const opts = makeOptions();
+    scheduleAutoSave(opts);
+    expect(opts.timerRef.current).not.toBeNull();
+
+    cancelAutoSave(opts.timerRef);
+
+    expect(opts.timerRef.current).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DEBOUNCE_MS + 1000);
+    expect(opts.saveToIDB).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when timerRef.current is null", () => {
+    const timerRef = makeTimerRef();
+    expect(timerRef.current).toBeNull();
+
+    // Should not throw
+    cancelAutoSave(timerRef);
+    expect(timerRef.current).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isLoadingProjectRef guard
+// ---------------------------------------------------------------------------
+describe("isLoadingProjectRef guard", () => {
+  it("blocks auto-save at fire time when isLoadingProjectRef is true", async () => {
+    const isLoadingProjectRef = { current: false };
+    const opts = makeOptions({ isLoadingProjectRef });
+    scheduleAutoSave(opts);
+
+    // Set loading to true before timer fires
+    isLoadingProjectRef.current = true;
+
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DEBOUNCE_MS);
+
+    expect(opts.serializeProject).not.toHaveBeenCalled();
+    expect(opts.saveToIDB).not.toHaveBeenCalled();
   });
 });

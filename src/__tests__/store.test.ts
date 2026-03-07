@@ -246,6 +246,36 @@ describe("layer ordering", () => {
 
     expect(usePlannerStore.getState().getRenderOrder()).toEqual([9]);
   });
+
+  it("heals wrong-group entries when moving a shape", () => {
+    usePlannerStore.getState().addObject({
+      id: 10,
+      type: "shape",
+      name: "S1",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
+    usePlannerStore.getState().addObject({
+      id: 11,
+      type: "shape",
+      name: "S2",
+      widthM: 1,
+      heightM: 1,
+      color: "g",
+    });
+
+    usePlannerStore.setState((state) => ({
+      layers: {
+        ...state.layers,
+        background: [{ objectId: 10, zIndex: 0 }],
+        content: [{ objectId: 11, zIndex: 0 }],
+      },
+    }));
+
+    usePlannerStore.getState().moveUpInLayer(10);
+    expect(usePlannerStore.getState().getRenderOrder()).toEqual([11, 10]);
+  });
 });
 
 describe("selectVisibleObjects", () => {

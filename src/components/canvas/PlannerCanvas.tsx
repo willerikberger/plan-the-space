@@ -49,7 +49,11 @@ import {
   deleteObject as deleteObjectUtil,
   loadProjectFromData as loadProjectFromDataUtil,
 } from "./utils/canvasOrchestration";
-import { scheduleAutoSave, handleBeforeUnload } from "./utils/autoSave";
+import {
+  scheduleAutoSave,
+  cancelAutoSave,
+  handleBeforeUnload,
+} from "./utils/autoSave";
 
 export interface PlannerCanvasHandle {
   // Calibration
@@ -89,6 +93,8 @@ export interface PlannerCanvasHandle {
   exportJson: () => void;
   importJson: (file: File) => Promise<void>;
   toggleAutoSave: () => void;
+  cancelPendingAutoSave: () => void;
+  setLoadingProject: (loading: boolean) => void;
   // Reorder
   reorderObjects: () => void;
   // History
@@ -305,6 +311,10 @@ export function PlannerCanvas({
   // Auto-save (extracted to autoSave.ts)
   // ============================================
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoadingProjectRef = useRef(false);
+
+  // Cancel auto-save timer on unmount
+  useEffect(() => () => cancelAutoSave(autoSaveTimerRef), []);
 
   const triggerAutoSave = useCallback(() => {
     scheduleAutoSave({
@@ -313,6 +323,7 @@ export function PlannerCanvas({
       getFabricState,
       serializeProject,
       saveToIDB,
+      isLoadingProjectRef,
     });
   }, [getFabricState, isRestoringRef]);
 
@@ -787,6 +798,10 @@ export function PlannerCanvas({
     exportJson,
     importJson,
     toggleAutoSave,
+    cancelPendingAutoSave: () => cancelAutoSave(autoSaveTimerRef),
+    setLoadingProject: (loading: boolean) => {
+      isLoadingProjectRef.current = loading;
+    },
     reorderObjects,
     undo,
     redo,

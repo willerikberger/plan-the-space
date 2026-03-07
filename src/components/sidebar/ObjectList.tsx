@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePlannerStore, selectVisibleObjects } from "@/lib/store";
-import type { PlannerObject } from "@/lib/types";
+import type { LayerEntry, PlannerObject } from "@/lib/types";
 
 interface ObjectListProps {
   selectedObjectId: number | null;
@@ -44,6 +44,29 @@ function objectColor(obj: PlannerObject): string | null {
   return null;
 }
 
+function canonicalVisibleOrder(
+  visibleObjects: PlannerObject[],
+  contentLayer: LayerEntry[],
+): number[] {
+  const expected = visibleObjects.map((obj) => obj.id);
+  const expectedSet = new Set(expected);
+  const fromLayer = [...contentLayer]
+    .sort((a, b) => a.zIndex - b.zIndex)
+    .map((entry) => entry.objectId)
+    .filter((id) => expectedSet.has(id));
+  const seen = new Set<number>();
+  const ordered: number[] = [];
+  for (const id of fromLayer) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ordered.push(id);
+  }
+  for (const id of expected) {
+    if (!seen.has(id)) ordered.push(id);
+  }
+  return ordered;
+}
+
 export const ObjectList = memo(function ObjectList({
   selectedObjectId,
   onSelect,
@@ -54,11 +77,8 @@ export const ObjectList = memo(function ObjectList({
   const visibleObjects = usePlannerStore(selectVisibleObjects);
   const contentLayer = usePlannerStore((s) => s.layers.content);
   const orderedContentIds = useMemo(
-    () =>
-      [...contentLayer]
-        .sort((a, b) => a.zIndex - b.zIndex)
-        .map((entry) => entry.objectId),
-    [contentLayer],
+    () => canonicalVisibleOrder(visibleObjects, contentLayer),
+    [visibleObjects, contentLayer],
   );
   const indexByObjectId = useMemo(() => {
     const map = new Map<number, number>();

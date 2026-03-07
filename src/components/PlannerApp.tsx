@@ -117,16 +117,21 @@ export default function PlannerApp() {
 
   const handleOpenProject = useCallback(
     async (id: string) => {
+      canvasRef.current?.cancelPendingAutoSave();
       await canvasRef.current?.save();
+      canvasRef.current?.setLoadingProject(true);
       const result = await openProject(adapter, id);
       if (result) {
-        // Load project data directly onto canvas (bypasses legacy IDB)
         pendingCanvasAction.current = (handle) =>
-          handle.loadFromSerializedData(
-            result.serializedObjects,
-            result.camera,
-            result.layers,
-          );
+          handle
+            .loadFromSerializedData(
+              result.serializedObjects,
+              result.camera,
+              result.layers,
+            )
+            .then(() => handle.setLoadingProject(false));
+      } else {
+        canvasRef.current?.setLoadingProject(false);
       }
       usePlannerStore.getState().setActiveView("canvas");
     },
@@ -134,6 +139,7 @@ export default function PlannerApp() {
   );
 
   const handleGoHome = useCallback(async () => {
+    canvasRef.current?.cancelPendingAutoSave();
     await canvasRef.current?.save();
     usePlannerStore.setState({ activeView: "picker", activeProjectId: null });
   }, []);
