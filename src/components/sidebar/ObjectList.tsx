@@ -1,6 +1,7 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
+import { ArrowDown, ArrowUp, ImageIcon, Ruler, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -18,11 +19,11 @@ interface ObjectListProps {
 function ObjectIcon({ type }: { type: PlannerObject["type"] }) {
   switch (type) {
     case "shape":
-      return <span>\u2b1c</span>;
+      return <Square className="size-4" aria-hidden="true" />;
     case "line":
-      return <span>\ud83d\udccf</span>;
+      return <Ruler className="size-4" aria-hidden="true" />;
     default:
-      return <span>\ud83d\uddbc\ufe0f</span>;
+      return <ImageIcon className="size-4" aria-hidden="true" />;
   }
 }
 
@@ -51,6 +52,21 @@ export const ObjectList = memo(function ObjectList({
   onMoveDown,
 }: ObjectListProps) {
   const visibleObjects = usePlannerStore(selectVisibleObjects);
+  const contentLayer = usePlannerStore((s) => s.layers.content);
+  const orderedContentIds = useMemo(
+    () =>
+      [...contentLayer]
+        .sort((a, b) => a.zIndex - b.zIndex)
+        .map((entry) => entry.objectId),
+    [contentLayer],
+  );
+  const indexByObjectId = useMemo(() => {
+    const map = new Map<number, number>();
+    orderedContentIds.forEach((id, index) => {
+      map.set(id, index);
+    });
+    return map;
+  }, [orderedContentIds]);
 
   return (
     <div className="mb-6" data-testid="object-list">
@@ -76,6 +92,10 @@ export const ObjectList = memo(function ObjectList({
           {visibleObjects.map((obj) => {
             const isSelected = selectedObjectId === obj.id;
             const color = objectColor(obj);
+            const layerIndex = indexByObjectId.get(obj.id);
+            const canMoveUp =
+              layerIndex != null && layerIndex < orderedContentIds.length - 1;
+            const canMoveDown = layerIndex != null && layerIndex > 0;
             return (
               <div
                 key={obj.id}
@@ -104,26 +124,31 @@ export const ObjectList = memo(function ObjectList({
                   <Button
                     variant="secondary"
                     size="sm"
+                    type="button"
                     aria-label={`Move ${obj.name} up`}
-                    className="min-w-[44px] min-h-[44px] h-5 px-1.5 text-[10px]"
+                    className="size-6 p-0"
+                    disabled={!canMoveUp}
                     onClick={() => onMoveUp(obj.id)}
                   >
-                    &uarr;
+                    <ArrowUp className="size-3.5" />
                   </Button>
                   <Button
                     variant="secondary"
                     size="sm"
+                    type="button"
                     aria-label={`Move ${obj.name} down`}
-                    className="min-w-[44px] min-h-[44px] h-5 px-1.5 text-[10px]"
+                    className="size-6 p-0"
+                    disabled={!canMoveDown}
                     onClick={() => onMoveDown(obj.id)}
                   >
-                    &darr;
+                    <ArrowDown className="size-3.5" />
                   </Button>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <Button
                     variant="secondary"
                     size="sm"
+                    type="button"
                     className="h-6 px-2 text-[10px]"
                     onClick={() => onSelect(obj.id)}
                   >
@@ -132,6 +157,7 @@ export const ObjectList = memo(function ObjectList({
                   <Button
                     variant="destructive"
                     size="sm"
+                    type="button"
                     aria-label={`Delete ${obj.name}`}
                     className="min-w-[44px] min-h-[44px] h-6 px-2 text-[10px]"
                     onClick={() => onDelete(obj.id)}

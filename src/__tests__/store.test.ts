@@ -197,6 +197,57 @@ describe("layerVisibility", () => {
   });
 });
 
+describe("layer ordering", () => {
+  it("moves content objects up and down in render order", () => {
+    usePlannerStore.getState().addObject({
+      id: 1,
+      type: "shape",
+      name: "A",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
+    usePlannerStore
+      .getState()
+      .addObject({ id: 2, type: "line", name: "B", lengthM: 1, color: "b" });
+    usePlannerStore.getState().addObject({
+      id: 3,
+      type: "shape",
+      name: "C",
+      widthM: 1,
+      heightM: 1,
+      color: "g",
+    });
+
+    usePlannerStore.getState().moveUpInLayer(2);
+    expect(usePlannerStore.getState().getRenderOrder()).toEqual([1, 3, 2]);
+
+    usePlannerStore.getState().moveDownInLayer(3);
+    expect(usePlannerStore.getState().getRenderOrder()).toEqual([3, 1, 2]);
+  });
+
+  it("ignores stale layer entries that do not match object type group", () => {
+    usePlannerStore.getState().addObject({
+      id: 9,
+      type: "shape",
+      name: "Shape",
+      widthM: 1,
+      heightM: 1,
+      color: "r",
+    });
+
+    usePlannerStore.setState((state) => ({
+      layers: {
+        ...state.layers,
+        background: [{ objectId: 9, zIndex: 0 }],
+        content: [{ objectId: 9, zIndex: 1 }],
+      },
+    }));
+
+    expect(usePlannerStore.getState().getRenderOrder()).toEqual([9]);
+  });
+});
+
 describe("selectVisibleObjects", () => {
   it("returns only shapes, lines, overlayImages", () => {
     const shape: ShapeObject = {

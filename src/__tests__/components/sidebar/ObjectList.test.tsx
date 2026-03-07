@@ -19,14 +19,23 @@ const mockSelectVisibleObjects = selectVisibleObjects as unknown as ReturnType<
 function setupStoreMock(
   objects: (ShapeObject | LineObject | OverlayImageObject)[] = [],
 ) {
-  // usePlannerStore is called with selectVisibleObjects as the selector.
   mockSelectVisibleObjects.mockReturnValue(objects);
+  const state = {
+    objects: new Map(objects.map((obj) => [obj.id, obj])),
+    layers: {
+      background: [],
+      masks: [],
+      content: objects.map((obj, index) => ({
+        objectId: obj.id,
+        zIndex: index,
+      })),
+    },
+  };
   mockUsePlannerStore.mockImplementation((selector?: unknown) => {
     if (typeof selector === "function") {
-      // If the selector is selectVisibleObjects, return the objects directly
-      return objects;
+      return (selector as (s: typeof state) => unknown)(state);
     }
-    return objects;
+    return state;
   });
 }
 
@@ -159,7 +168,7 @@ describe("ObjectList", () => {
   });
 
   it("calls onMoveUp with object id when up arrow clicked", () => {
-    setupStoreMock([sampleShape]);
+    setupStoreMock([sampleShape, sampleLine]);
     render(<ObjectList {...defaultProps} />);
     const upBtn = screen.getByRole("button", {
       name: "Move Garden Bed up",
@@ -169,13 +178,30 @@ describe("ObjectList", () => {
   });
 
   it("calls onMoveDown with object id when down arrow clicked", () => {
-    setupStoreMock([sampleShape]);
+    setupStoreMock([sampleShape, sampleLine]);
     render(<ObjectList {...defaultProps} />);
     const downBtn = screen.getByRole("button", {
-      name: "Move Garden Bed down",
+      name: "Move Fence Line down",
     });
     fireEvent.click(downBtn);
-    expect(defaultProps.onMoveDown).toHaveBeenCalledWith(1);
+    expect(defaultProps.onMoveDown).toHaveBeenCalledWith(2);
+  });
+
+  it("disables move-up for topmost item and move-down for bottom item", () => {
+    setupStoreMock([sampleShape, sampleLine]);
+    render(<ObjectList {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: "Move Fence Line up" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move Garden Bed down" }),
+    ).toBeDisabled();
+  });
+
+  it("does not render escaped unicode sequences in object cards", () => {
+    setupStoreMock([sampleShape]);
+    render(<ObjectList {...defaultProps} />);
+    expect(screen.queryByText("\\u2b1c")).not.toBeInTheDocument();
   });
 
   // --------------------------------------------------

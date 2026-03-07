@@ -97,14 +97,17 @@ const createObjectsSlice: StoreSliceCreator<ObjectsSlice> = (set, get) => ({
       next.set(obj.id, obj);
       // Also add to the correct layer group
       const group = layerGroupForType(obj.type);
-      const entries = state.layers[group];
+      const entries = state.layers[group].filter((e) => e.objectId !== obj.id);
       const maxZ =
         entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
       return {
         objects: next,
         layers: {
           ...state.layers,
-          [group]: [...entries, { objectId: obj.id, zIndex: maxZ + 1 }],
+          [group]: normalizeLayerEntries([
+            ...entries,
+            { objectId: obj.id, zIndex: maxZ + 1 },
+          ]),
         },
       };
     }),
@@ -211,19 +214,37 @@ const allVisible: LayerVisibility = {
   content: true,
 };
 
+function normalizeLayerEntries(entries: LayerEntry[]): LayerEntry[] {
+  const minZById = new Map<number, number>();
+  for (const entry of entries) {
+    const existing = minZById.get(entry.objectId);
+    if (existing == null || entry.zIndex < existing) {
+      minZById.set(entry.objectId, entry.zIndex);
+    }
+  }
+  return Array.from(minZById.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([objectId], index) => ({ objectId, zIndex: index }));
+}
+
 const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
   layers: { ...emptyLayers, background: [], masks: [], content: [] },
   layerVisibility: { ...allVisible },
 
   addToLayer: (objectId, group) =>
     set((state) => {
-      const entries = state.layers[group];
+      const entries = state.layers[group].filter(
+        (e) => e.objectId !== objectId,
+      );
       const maxZ =
         entries.length > 0 ? Math.max(...entries.map((e) => e.zIndex)) : -1;
       return {
         layers: {
           ...state.layers,
-          [group]: [...entries, { objectId, zIndex: maxZ + 1 }],
+          [group]: normalizeLayerEntries([
+            ...entries,
+            { objectId, zIndex: maxZ + 1 },
+          ]),
         },
       };
     }),
@@ -243,17 +264,20 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
   moveUpInLayer: (objectId) =>
     set((state) => {
       for (const group of ["background", "masks", "content"] as const) {
-        const entries = [...state.layers[group]];
-        const sorted = entries.sort((a, b) => a.zIndex - b.zIndex);
-        const idx = sorted.findIndex((e) => e.objectId === objectId);
+        const sorted = normalizeLayerEntries(state.layers[group]);
+        const idx = sorted.findIndex((entry) => entry.objectId === objectId);
         if (idx === -1) continue;
         if (idx >= sorted.length - 1) return state; // already at top
-        // Swap zIndex with the entry above
-        const temp = sorted[idx].zIndex;
-        sorted[idx] = { ...sorted[idx], zIndex: sorted[idx + 1].zIndex };
-        sorted[idx + 1] = { ...sorted[idx + 1], zIndex: temp };
+        const swapped = [...sorted];
+        [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
         return {
-          layers: { ...state.layers, [group]: sorted },
+          layers: {
+            ...state.layers,
+            [group]: swapped.map((entry, index) => ({
+              ...entry,
+              zIndex: index,
+            })),
+          },
         };
       }
       return state;
@@ -262,17 +286,20 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
   moveDownInLayer: (objectId) =>
     set((state) => {
       for (const group of ["background", "masks", "content"] as const) {
-        const entries = [...state.layers[group]];
-        const sorted = entries.sort((a, b) => a.zIndex - b.zIndex);
-        const idx = sorted.findIndex((e) => e.objectId === objectId);
+        const sorted = normalizeLayerEntries(state.layers[group]);
+        const idx = sorted.findIndex((entry) => entry.objectId === objectId);
         if (idx === -1) continue;
         if (idx <= 0) return state; // already at bottom
-        // Swap zIndex with the entry below
-        const temp = sorted[idx].zIndex;
-        sorted[idx] = { ...sorted[idx], zIndex: sorted[idx - 1].zIndex };
-        sorted[idx - 1] = { ...sorted[idx - 1], zIndex: temp };
+        const swapped = [...sorted];
+        [swapped[idx], swapped[idx - 1]] = [swapped[idx - 1], swapped[idx]];
         return {
-          layers: { ...state.layers, [group]: sorted },
+          layers: {
+            ...state.layers,
+            [group]: swapped.map((entry, index) => ({
+              ...entry,
+              zIndex: index,
+            })),
+          },
         };
       }
       return state;
@@ -280,12 +307,17 @@ const createLayerSlice: StoreSliceCreator<LayerSlice> = (set, get) => ({
 
   getRenderOrder: () => {
     const state = get();
-    const sortByZ = (entries: LayerEntry[]) =>
-      [...entries].sort((a, b) => a.zIndex - b.zIndex).map((e) => e.objectId);
+    const sortByZ = (group: LayerGroup, entries: LayerEntry[]) =>
+      normalizeLayerEntries(
+        entries.filter((entry) => {
+          const obj = state.objects.get(entry.objectId);
+          return obj ? layerGroupForType(obj.type) === group : false;
+        }),
+      ).map((entry) => entry.objectId);
     return [
-      ...sortByZ(state.layers.background),
-      ...sortByZ(state.layers.masks),
-      ...sortByZ(state.layers.content),
+      ...sortByZ("background", state.layers.background),
+      ...sortByZ("masks", state.layers.masks),
+      ...sortByZ("content", state.layers.content),
     ];
   },
 
