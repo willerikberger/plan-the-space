@@ -5,6 +5,7 @@ import {
   worldLengthToCanvas,
   canvasLengthToWorld,
   worldRectToCanvas,
+  worldCenterRectToObjectSpace,
   createCamera,
   updateCameraViewport,
   cameraFromFabricViewport,
@@ -152,6 +153,23 @@ describe("worldRectToCanvas", () => {
     const result = worldRectToCanvas(1, 1, 2, 2, panned);
     expect(result.left).toBe(150); // 1 * 100 + 50
     expect(result.top).toBe(200); // 1 * 100 + 100
+  });
+});
+
+describe("worldCenterRectToObjectSpace", () => {
+  it("converts center-based world rect to object-space using ppm only", () => {
+    const result = worldCenterRectToObjectSpace(10, 20, 4, 2.3, 43);
+    expect(result.left).toBeCloseTo((10 - 2) * 43, 10);
+    expect(result.top).toBeCloseTo((20 - 1.15) * 43, 10);
+    expect(result.width).toBeCloseTo(4 * 43, 10);
+    expect(result.height).toBeCloseTo(2.3 * 43, 10);
+  });
+
+  it("is independent of camera zoom/pan", () => {
+    const ppm = 100;
+    const resultA = worldCenterRectToObjectSpace(5, 5, 2, 3, ppm);
+    const resultB = worldCenterRectToObjectSpace(5, 5, 2, 3, ppm);
+    expect(resultA).toEqual(resultB);
   });
 });
 

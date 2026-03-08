@@ -19,7 +19,7 @@ import {
 import { roundToDecimal } from "@/components/canvas/utils/geometry";
 import {
   canvasToWorld,
-  worldRectToCanvas,
+  worldCenterRectToObjectSpace,
 } from "@/components/canvas/utils/coordinates";
 import type { ShapeFabricRefs } from "@/lib/types";
 
@@ -177,31 +177,24 @@ export function useShapes(
       const store = usePlannerStore.getState();
       if (!canvas || !store.pixelsPerMeter) return;
 
-      const camera = store.camera;
-
       // If world coords available and camera exists, compute pixel position from world space
       let left = data.left;
       let top = data.top;
       let widthPx = data.width ?? data.widthM * store.pixelsPerMeter;
       let heightPx = data.height ?? data.heightM * store.pixelsPerMeter;
 
-      if (
-        data.width == null &&
-        data.worldX != null &&
-        data.worldY != null &&
-        camera
-      ) {
-        const canvasRect = worldRectToCanvas(
-          data.worldX - data.widthM / 2,
-          data.worldY - data.heightM / 2,
+      if (data.width == null && data.worldX != null && data.worldY != null) {
+        const objectRect = worldCenterRectToObjectSpace(
+          data.worldX,
+          data.worldY,
           data.widthM,
           data.heightM,
-          camera,
+          store.pixelsPerMeter,
         );
-        left = canvasRect.left;
-        top = canvasRect.top;
-        widthPx = canvasRect.width;
-        heightPx = canvasRect.height;
+        left = objectRect.left;
+        top = objectRect.top;
+        widthPx = objectRect.width;
+        heightPx = objectRect.height;
       }
 
       const id = store.nextObjectId();

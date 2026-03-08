@@ -77,6 +77,26 @@ export function worldRectToCanvas(
   };
 }
 
+/**
+ * Convert a world-space rect defined by center (meters) to Fabric object-space
+ * (unzoomed/unpanned canvas coordinates). This is used when constructing objects:
+ * viewport transform (zoom/pan) is applied by Fabric at render-time.
+ */
+export function worldCenterRectToObjectSpace(
+  worldCenterX: number,
+  worldCenterY: number,
+  widthM: number,
+  heightM: number,
+  pixelsPerMeter: number,
+): { left: number; top: number; width: number; height: number } {
+  return {
+    left: (worldCenterX - widthM / 2) * pixelsPerMeter,
+    top: (worldCenterY - heightM / 2) * pixelsPerMeter,
+    width: widthM * pixelsPerMeter,
+    height: heightM * pixelsPerMeter,
+  };
+}
+
 // ============================================
 // Camera factory & viewport helpers
 // ============================================
