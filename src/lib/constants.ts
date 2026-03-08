@@ -63,6 +63,20 @@ export const DEFAULTS = {
 } as const;
 
 // ============================================
+// View aids defaults
+// ============================================
+export const VIEW_AIDS_DEFAULTS = {
+  showGrid: true,
+  showRulers: true,
+  snapEnabled: true,
+  gridStepM: 0.5,
+  majorEvery: 5,
+  guideLock: false,
+  guides: [],
+  snapTolerancePx: 10,
+} as const;
+
+// ============================================
 // Zoom
 // ============================================
 export const ZOOM_MIN = 0.1;

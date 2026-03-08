@@ -141,7 +141,7 @@ describe("Multi-project end-to-end workflow", () => {
     );
     const importedRecord = await adapter.loadProjectRecord(importId);
     expect(importedRecord!.name).toBe("legacy-plan (Imported)");
-    expect(importedRecord!.projectData.version).toBe(4); // migrated
+    expect(importedRecord!.projectData.version).toBe(5); // migrated
     expect(
       usePlannerStore.getState().projects.find((p) => p.id === importId),
     ).toBeDefined();

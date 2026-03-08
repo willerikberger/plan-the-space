@@ -1,5 +1,8 @@
 import type { Page } from "@playwright/test";
 
+const CANVAS_SELECTOR =
+  'canvas[data-fabric="main"][aria-label="Floor plan design canvas"]';
+
 /**
  * Reads the full Zustand store state, converting the objects Map to an array.
  */
@@ -45,7 +48,7 @@ export async function getObjectCount(page: Page): Promise<number> {
 export async function getFabricObjects(page: Page) {
   return page.evaluate(() => {
     const canvas = document.querySelector(
-      'canvas[aria-label="Floor plan design canvas"]',
+      'canvas[data-fabric="main"][aria-label="Floor plan design canvas"]',
     ) as any;
     const fabric = canvas?.__fabric;
     if (!fabric) return [];
@@ -66,7 +69,7 @@ export async function getFabricObjects(page: Page) {
  * Click at a position relative to the canvas element bounding box.
  */
 export async function canvasClick(page: Page, x: number, y: number) {
-  const canvas = page.locator('canvas[aria-label="Floor plan design canvas"]');
+  const canvas = page.locator(CANVAS_SELECTOR);
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Canvas not found");
   await page.mouse.click(box.x + x, box.y + y);
@@ -81,7 +84,7 @@ export async function canvasDrag(
   to: { x: number; y: number },
   steps = 10,
 ) {
-  const canvas = page.locator('canvas[aria-label="Floor plan design canvas"]');
+  const canvas = page.locator(CANVAS_SELECTOR);
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Canvas not found");
   await page.mouse.move(box.x + from.x, box.y + from.y);
@@ -99,7 +102,7 @@ export async function canvasScroll(
   y: number,
   deltaY: number,
 ) {
-  const canvas = page.locator('canvas[aria-label="Floor plan design canvas"]');
+  const canvas = page.locator(CANVAS_SELECTOR);
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Canvas not found");
   // Position the mouse first, then scroll
@@ -111,13 +114,13 @@ export async function canvasScroll(
  * Waits for the canvas element and Fabric.js instance to be ready.
  */
 export async function waitForCanvasReady(page: Page) {
-  await page.waitForSelector('canvas[aria-label="Floor plan design canvas"]', {
+  await page.waitForSelector(CANVAS_SELECTOR, {
     timeout: 15000,
   });
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector(
-        'canvas[aria-label="Floor plan design canvas"]',
+        'canvas[data-fabric="main"][aria-label="Floor plan design canvas"]',
       ) as any;
       return canvas && canvas.__fabric;
     },

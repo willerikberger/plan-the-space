@@ -186,7 +186,7 @@ describe("round-trip serialize -> deserialize", () => {
       return null;
     });
 
-    expect(project.version).toBe(4);
+    expect(project.version).toBe(5);
     expect(project.pixelsPerMeter).toBe(50);
     expect(project.objects).toHaveLength(2);
     expect((project as SerializedProjectV4).metadata?.exportedFrom).toBe(
@@ -279,7 +279,7 @@ describe("migrateProject", () => {
       objects: [],
     };
     const v4 = migrateProject(v2Data);
-    expect(v4.version).toBe(4);
+    expect(v4.version).toBe(5);
     expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
     expect(v4.pixelsPerMeter).toBe(50);
     expect(v4.objects).toEqual([]);
@@ -295,7 +295,7 @@ describe("migrateProject", () => {
       metadata: { appVersion: "1.0.0", exportedFrom: "plan-the-space" },
     };
     const result = migrateProject(v3Data);
-    expect(result.version).toBe(4);
+    expect(result.version).toBe(5);
     expect(result.metadata?.exportedFrom).toBe("plan-the-space");
     expect(result.pixelsPerMeter).toBe(75);
   });

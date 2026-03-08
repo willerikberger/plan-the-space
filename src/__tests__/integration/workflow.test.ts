@@ -289,7 +289,7 @@ describe("Full workflow integration: store -> history -> serialization", () => {
       (id) => fabricLookup.get(id) ?? null,
     );
 
-    expect(exportedProject.version).toBe(4);
+    expect(exportedProject.version).toBe(5);
     expect(exportedProject.pixelsPerMeter).toBe(75);
     expect(exportedProject.backgroundImage).toBeNull();
     // 2 objects: bgImage + shape
@@ -540,7 +540,7 @@ describe("Serialization round-trip with multiple object types", () => {
           : never) ?? null,
     );
 
-    expect(project.version).toBe(4);
+    expect(project.version).toBe(5);
     expect(project.objects).toHaveLength(3);
     expect(validateProjectData(project)).toBe(true);
 
@@ -689,7 +689,7 @@ describe("Edge cases", () => {
 
   it("export empty project serializes correctly", () => {
     const project = serializeProject(null, [], () => null);
-    expect(project.version).toBe(4);
+    expect(project.version).toBe(5);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
     expect(project.objects).toHaveLength(0);

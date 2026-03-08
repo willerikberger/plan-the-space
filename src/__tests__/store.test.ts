@@ -13,6 +13,8 @@ describe("usePlannerStore", () => {
     expect(state.pixelsPerMeter).toBeNull();
     expect(state.objects.size).toBe(0);
     expect(state.objectIdCounter).toBe(0);
+    expect(state.viewAids.showGrid).toBe(true);
+    expect(state.viewAids.gridStepM).toBe(0.5);
   });
 
   it("setMode changes mode", () => {
@@ -163,6 +165,31 @@ describe("usePlannerStore", () => {
   it("autoSaveEnabled defaults to true", () => {
     const state = usePlannerStore.getState();
     expect(state.autoSaveEnabled).toBe(true);
+  });
+
+  it("toggles grid visibility", () => {
+    const store = usePlannerStore.getState();
+    const initial = store.viewAids.showGrid;
+    store.toggleGrid();
+    expect(usePlannerStore.getState().viewAids.showGrid).toBe(!initial);
+  });
+
+  it("adds and updates guides", () => {
+    const store = usePlannerStore.getState();
+    const id = store.addGuide("x", 4.2, "guide-1");
+    expect(id).toBe("guide-1");
+    expect(usePlannerStore.getState().viewAids.guides).toHaveLength(1);
+    store.updateGuide("guide-1", 5.5);
+    expect(usePlannerStore.getState().viewAids.guides[0].valueM).toBe(5.5);
+  });
+
+  it("clears guides", () => {
+    const store = usePlannerStore.getState();
+    store.addGuide("x", 1);
+    store.addGuide("y", 2);
+    expect(usePlannerStore.getState().viewAids.guides).toHaveLength(2);
+    store.clearGuides();
+    expect(usePlannerStore.getState().viewAids.guides).toHaveLength(0);
   });
 });
 

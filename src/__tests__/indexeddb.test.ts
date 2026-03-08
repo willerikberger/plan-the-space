@@ -54,7 +54,7 @@ describe("IndexedDB storage", () => {
     await saveProject(testProject);
     const loaded = await loadProject();
     expect(loaded).not.toBeNull();
-    expect(loaded?.version).toBe(4); // v2 input is migrated to v4 on load
+    expect(loaded?.version).toBe(5); // v2 input is migrated to v4 on load
     expect(loaded?.pixelsPerMeter).toBe(50);
     expect(loaded?.objects).toHaveLength(1);
   });
@@ -94,9 +94,9 @@ describe("IndexedDB storage", () => {
     await saveProject(testProject); // v2
     const loaded = await loadProject();
     expect(loaded).not.toBeNull();
-    expect(loaded?.version).toBe(4);
+    expect(loaded?.version).toBe(5);
     if (loaded && "metadata" in loaded) {
-      expect((loaded as Record<string, unknown>).metadata).toBeDefined();
+      expect((loaded as { metadata?: unknown }).metadata).toBeDefined();
     }
   });
 });

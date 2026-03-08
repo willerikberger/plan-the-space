@@ -35,6 +35,7 @@ export interface UseLinesReturn {
   handleLineDrawStart: (pointer: Point) => void;
   updateDrawingLine: (pointer: Point) => void;
   finishDrawingLine: () => void;
+  updateLineAfterTransform: (line: unknown, finalize: boolean) => void;
   loadLine: (data: {
     left: number;
     top: number;
@@ -333,6 +334,49 @@ export function useLines(
     [fabricCanvasRef, fabricRefsRef],
   );
 
+  const updateLineAfterTransform = useCallback(
+    (lineLike: unknown, finalize: boolean) => {
+      const line = lineLike as MeasuredLine;
+      const store = usePlannerStore.getState();
+      const ppm = store.pixelsPerMeter;
+      if (!ppm) return;
+
+      const left = line.left ?? 0;
+      const top = line.top ?? 0;
+      const scaleX = line.scaleX ?? 1;
+      const scaleY = line.scaleY ?? 1;
+      const x1 = left + (line.x1 ?? 0) * scaleX;
+      const y1 = top + (line.y1 ?? 0) * scaleY;
+      const x2 = left + (line.x2 ?? 0) * scaleX;
+      const y2 = top + (line.y2 ?? 0) * scaleY;
+      const pxLen = distance({ x: x1, y: y1 }, { x: x2, y: y2 });
+      const meterLen = roundToDecimal(pxLen / ppm, 1);
+
+      line.label = `${meterLen}m`;
+      line.lengthM = meterLen;
+      setFabricProps(line, { lengthM: meterLen });
+
+      if (!finalize) return;
+      const id = getFabricProp(line, "objectId");
+      if (id == null) return;
+
+      store.updateObject(id, {
+        lengthM: meterLen,
+        worldX1: x1 / ppm,
+        worldY1: y1 / ppm,
+        worldX2: x2 / ppm,
+        worldY2: y2 / ppm,
+      } as Partial<{
+        lengthM: number;
+        worldX1: number;
+        worldY1: number;
+        worldX2: number;
+        worldY2: number;
+      }>);
+    },
+    [],
+  );
+
   return {
     lineStartRef,
     startLineDrawing,
@@ -340,6 +384,7 @@ export function useLines(
     handleLineDrawStart,
     updateDrawingLine,
     finishDrawingLine,
+    updateLineAfterTransform,
     loadLine,
   };
 }

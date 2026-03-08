@@ -47,6 +47,29 @@ export interface SnappedPoint extends Point {
 }
 
 // ============================================
+// View aids (grid, rulers, guides)
+// ============================================
+
+export type GuideAxis = "x" | "y";
+
+export interface Guide {
+  id: string;
+  axis: GuideAxis; // x = vertical guide, y = horizontal guide
+  valueM: number; // world coordinate in meters
+}
+
+export interface ViewAidsSettings {
+  showGrid: boolean;
+  showRulers: boolean;
+  snapEnabled: boolean;
+  gridStepM: number;
+  majorEvery: number;
+  guideLock: boolean;
+  guides: Guide[];
+  snapTolerancePx: number;
+}
+
+// ============================================
 // Planner objects (store metadata, not Fabric refs)
 // ============================================
 interface BaseObject {
@@ -170,6 +193,7 @@ export interface StoreSnapshot {
   objectIdCounter: number;
   camera?: Camera | null;
   layers?: Record<LayerGroup, LayerEntry[]>;
+  viewAids?: ViewAidsSettings;
 }
 
 export interface FabricObjectSnapshot {
@@ -321,8 +345,31 @@ export interface SerializedProjectV4 extends SerializedProjectBase {
   metadata?: { appVersion?: string; exportedFrom?: string };
 }
 
+export interface SerializedViewAids {
+  showGrid: boolean;
+  showRulers: boolean;
+  snapEnabled: boolean;
+  gridStepM: number;
+  majorEvery: number;
+  guideLock: boolean;
+  guides: Guide[];
+  snapTolerancePx: number;
+}
+
+export interface SerializedProjectV5 extends SerializedProjectBase {
+  version: 5;
+  camera?: SerializedCamera;
+  layers?: SerializedLayers;
+  viewAids?: SerializedViewAids;
+  metadata?: { appVersion?: string; exportedFrom?: string };
+}
+
 // Union keeps backward compat — v2 has no metadata field
-export type SerializedProject = SerializedProjectBase;
+export type SerializedProject =
+  | SerializedProjectBase
+  | SerializedProjectV3
+  | SerializedProjectV4
+  | SerializedProjectV5;
 
 // ============================================
 // Shape bundle import/export
@@ -471,6 +518,31 @@ export interface HistorySliceActions {
 export type HistorySlice = HistorySliceState & HistorySliceActions;
 
 // ============================================
+// View aids slice
+// ============================================
+
+export interface ViewAidsSliceState {
+  viewAids: ViewAidsSettings;
+}
+
+export interface ViewAidsSliceActions {
+  setViewAids: (partial: Partial<ViewAidsSettings>) => void;
+  toggleGrid: () => void;
+  toggleRulers: () => void;
+  toggleSnap: () => void;
+  setGridStepM: (stepM: number) => void;
+  setMajorEvery: (majorEvery: number) => void;
+  setGuideLock: (locked: boolean) => void;
+  addGuide: (axis: GuideAxis, valueM: number, id?: string) => string;
+  updateGuide: (id: string, valueM: number) => void;
+  removeGuide: (id: string) => void;
+  clearGuides: () => void;
+  replaceGuides: (guides: Guide[]) => void;
+}
+
+export type ViewAidsSlice = ViewAidsSliceState & ViewAidsSliceActions;
+
+// ============================================
 // Layer system
 // ============================================
 export type LayerGroup = "background" | "masks" | "content";
@@ -581,6 +653,7 @@ export type PlannerState = CanvasSliceState &
   ObjectsSliceState &
   UISliceState &
   HistorySliceState &
+  ViewAidsSliceState &
   LayerSliceState &
   ProjectSliceState;
 
@@ -588,11 +661,13 @@ export type PlannerActions = CanvasSliceActions &
   ObjectsSliceActions &
   UISliceActions &
   HistorySliceActions &
+  ViewAidsSliceActions &
   LayerSliceActions &
   ProjectSliceActions & {
     loadProject: (data: {
       pixelsPerMeter: number | null;
       objects: PlannerObject[];
+      viewAids?: ViewAidsSettings;
     }) => void;
     reset: () => void;
   };

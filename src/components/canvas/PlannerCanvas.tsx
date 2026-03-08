@@ -11,6 +11,7 @@ import { useCleanup } from "./hooks/useCleanup";
 import { useCanvasEvents } from "./hooks/useCanvasEvents";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useHistory } from "./hooks/useHistory";
+import { useViewAids } from "./hooks/useViewAids";
 import { usePlannerStore } from "@/lib/store";
 import type {
   ShapeFabricRefs,
@@ -23,6 +24,7 @@ import type {
   Camera,
   LayerGroup,
   LayerEntry,
+  ViewAidsSettings,
 } from "@/lib/types";
 import { cameraToFabricViewport } from "@/components/canvas/utils/coordinates";
 import type { TMat2D } from "fabric";
@@ -89,6 +91,7 @@ export interface PlannerCanvasHandle {
     serializedObjects: SerializedObject[],
     camera?: Camera,
     layers?: Record<LayerGroup, LayerEntry[]>,
+    viewAids?: ViewAidsSettings,
   ) => Promise<void>;
   clearStorage: () => Promise<void>;
   exportJson: () => void;
@@ -294,6 +297,9 @@ export function PlannerCanvas({
         usePlannerStore.setState({ layers: ss.layers });
         reorderObjects();
       }
+      if (ss.viewAids) {
+        usePlannerStore.setState({ viewAids: ss.viewAids });
+      }
     },
     [clearCanvas, loadProjectFromData, reorderObjects],
   );
@@ -329,6 +335,8 @@ export function PlannerCanvas({
     });
   }, [getFabricState, isRestoringRef]);
 
+  const viewAids = useViewAids(fabricCanvasRef, () => {});
+
   // beforeunload — best-effort save on page close
   useEffect(() => {
     const handler = () =>
@@ -336,6 +344,27 @@ export function PlannerCanvas({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [getFabricState]);
+
+  // Capture history for toolbar-driven view-aids settings changes.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let prev = JSON.stringify(usePlannerStore.getState().viewAids);
+    const unsub = usePlannerStore.subscribe((state) => {
+      const next = JSON.stringify(state.viewAids);
+      if (next === prev) return;
+      prev = next;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (isRestoringRef.current || isLoadingProjectRef.current) return;
+        captureSnapshot();
+        triggerAutoSave();
+      }, 120);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsub();
+    };
+  }, [captureSnapshot, triggerAutoSave, isRestoringRef]);
 
   // ============================================
   // Object management
@@ -425,6 +454,7 @@ export function PlannerCanvas({
       getFabricState,
       s.camera,
       s.layers,
+      s.viewAids,
     );
     await saveToIDB(data);
     // Also save to per-project record if active
@@ -467,6 +497,7 @@ export function PlannerCanvas({
     try {
       clearCanvas();
       usePlannerStore.getState().setPixelsPerMeter(deserialized.pixelsPerMeter);
+      usePlannerStore.setState({ viewAids: deserialized.viewAids });
 
       // Restore camera and Fabric viewport if saved
       if (deserialized.camera) {
@@ -507,6 +538,7 @@ export function PlannerCanvas({
       serializedObjects: SerializedObject[],
       camera?: Camera,
       layers?: Record<LayerGroup, LayerEntry[]>,
+      viewAids?: ViewAidsSettings,
     ) => {
       try {
         clearCanvas();
@@ -523,6 +555,9 @@ export function PlannerCanvas({
         if (layers) {
           usePlannerStore.setState({ layers });
           reorderObjects();
+        }
+        if (viewAids) {
+          usePlannerStore.setState({ viewAids });
         }
 
         store.setStatusMessage("Project loaded");
@@ -559,6 +594,7 @@ export function PlannerCanvas({
       getFabricState,
       s.camera,
       s.layers,
+      s.viewAids,
     );
     downloadProjectAsJson(data);
     s.setStatusMessage("Project exported successfully");
@@ -603,6 +639,7 @@ export function PlannerCanvas({
         usePlannerStore
           .getState()
           .setPixelsPerMeter(deserialized.pixelsPerMeter);
+        usePlannerStore.setState({ viewAids: deserialized.viewAids });
 
         // Restore camera and Fabric viewport if present in imported data
         if (deserialized.camera) {
@@ -822,6 +859,7 @@ export function PlannerCanvas({
       triggerAutoSave();
     }, [cleanup, captureSnapshot, triggerAutoSave]),
     updateShapeDimensions: shapes.updateShapeDimensions,
+    updateLineAfterTransform: lines.updateLineAfterTransform,
     startPan: panZoom.startPan,
     movePan: panZoom.movePan,
     endPan: panZoom.endPan,
@@ -829,6 +867,11 @@ export function PlannerCanvas({
     deleteSelected,
     reorderObjects,
     triggerAutoSave: handleObjectModifiedWithHistory,
+    handleViewAidsPointerDown: viewAids.handlePointerDown,
+    handleViewAidsPointerMove: viewAids.handlePointerMove,
+    handleViewAidsPointerUp: viewAids.handlePointerUp,
+    applyObjectMoveSnapping: viewAids.applyObjectMoveSnapping,
+    applyObjectScaleSnapping: viewAids.applyObjectScaleSnapping,
   });
 
   // Keyboard shortcuts
@@ -839,6 +882,26 @@ export function PlannerCanvas({
     deleteSelected,
     undo,
     redo,
+    toggleGrid: () => {
+      const store = usePlannerStore.getState();
+      store.toggleGrid();
+      store.setStatusMessage(
+        store.viewAids.showGrid ? "Grid hidden" : "Grid shown",
+      );
+    },
+    toggleSnap: () => {
+      const store = usePlannerStore.getState();
+      store.toggleSnap();
+      store.setStatusMessage(
+        store.viewAids.snapEnabled ? "Snapping disabled" : "Snapping enabled",
+      );
+    },
+    clearGuides: () => {
+      const store = usePlannerStore.getState();
+      if (store.viewAids.guides.length === 0) return;
+      viewAids.clearGuidesWithHistory();
+      store.setStatusMessage("Guides cleared");
+    },
   });
 
   // ============================================
@@ -946,6 +1009,12 @@ export function PlannerCanvas({
   return (
     <div ref={containerRef} className="flex-1 relative overflow-hidden">
       <canvas ref={canvasElRef} aria-label="Floor plan design canvas" />
+      <canvas
+        ref={viewAids.overlayCanvasRef}
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        data-testid="view-aids-overlay"
+      />
     </div>
   );
 }

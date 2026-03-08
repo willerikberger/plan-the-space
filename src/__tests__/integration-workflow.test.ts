@@ -358,7 +358,7 @@ describe("Full user workflow integration", () => {
     );
 
     // Verify serialized structure
-    expect(serialized.version).toBe(4);
+    expect(serialized.version).toBe(5);
     expect(serialized.pixelsPerMeter).toBe(100);
     expect(serialized.backgroundImage).toBeNull();
     // 4 objects: bgImage + patio + fence + shed
@@ -441,7 +441,7 @@ describe("Full user workflow integration", () => {
     // Load from IDB — should come back migrated to v4
     const loadedFromIDB = await loadProject();
     expect(loadedFromIDB).not.toBeNull();
-    expect(loadedFromIDB!.version).toBe(4);
+    expect(loadedFromIDB!.version).toBe(5);
     expect(loadedFromIDB!.pixelsPerMeter).toBe(100);
     expect(loadedFromIDB!.backgroundImage).toBeNull();
     expect(loadedFromIDB!.objects).toHaveLength(4);

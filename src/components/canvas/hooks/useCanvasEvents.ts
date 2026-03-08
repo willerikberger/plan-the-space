@@ -38,6 +38,10 @@ export interface ShapeHandlers {
   updateShapeDimensions: (rect: MeasuredRect, finalize: boolean) => void;
 }
 
+export interface LineHandlersForEvents {
+  updateLineAfterTransform: (line: unknown, finalize: boolean) => void;
+}
+
 export interface PanHandlers {
   startPan: (clientX: number, clientY: number) => void;
   movePan: (clientX: number, clientY: number) => void;
@@ -51,12 +55,22 @@ export interface ObjectHandlers {
   triggerAutoSave: () => void;
 }
 
+export interface ViewAidsHandlers {
+  handleViewAidsPointerDown: (e: MouseEvent) => boolean;
+  handleViewAidsPointerMove: (e: MouseEvent) => boolean;
+  handleViewAidsPointerUp: (e: MouseEvent) => boolean;
+  applyObjectMoveSnapping: (obj: unknown, e: MouseEvent) => void;
+  applyObjectScaleSnapping: (obj: unknown, e: MouseEvent) => void;
+}
+
 type CanvasEventHandlers = CalibrationHandlers &
   LineHandlers &
+  LineHandlersForEvents &
   MaskHandlers &
   ShapeHandlers &
   PanHandlers &
-  ObjectHandlers;
+  ObjectHandlers &
+  ViewAidsHandlers;
 
 export function useCanvasEvents(
   fabricCanvasRef: React.RefObject<Canvas | null>,
@@ -77,6 +91,12 @@ export function useCanvasEvents(
       if (!canvas) return;
       const mode = usePlannerStore.getState().mode;
       const pointer = canvas.getScenePoint(opt.e);
+
+      if (h.handleViewAidsPointerDown(opt.e)) {
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+        return;
+      }
 
       if (mode === "calibrating") {
         h.handleCalibrationClick(pointer);
@@ -104,6 +124,12 @@ export function useCanvasEvents(
       const mode = usePlannerStore.getState().mode;
       const pointer = canvas.getScenePoint(opt.e);
 
+      if (h.handleViewAidsPointerMove(opt.e)) {
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+        return;
+      }
+
       if (mode === "calibrating" && h.startPointRef.current) {
         h.updateCalibrationLine(pointer);
         return;
@@ -121,10 +147,14 @@ export function useCanvasEvents(
       }
     };
 
-    const onMouseUp = () => {
+    const onMouseUp = (opt: TPointerEventInfo<MouseEvent>) => {
       const h = handlersRef.current;
       if (!canvas) return;
       const mode = usePlannerStore.getState().mode;
+
+      if (h.handleViewAidsPointerUp(opt.e)) {
+        return;
+      }
 
       if (mode === "calibrating" && h.startPointRef.current) {
         h.finishCalibrationLine();
@@ -141,6 +171,12 @@ export function useCanvasEvents(
       h.endPan();
     };
 
+    const onObjectMoving = (opt: { target: unknown; e: MouseEvent }) => {
+      const h = handlersRef.current;
+      if (!opt.target) return;
+      h.applyObjectMoveSnapping(opt.target, opt.e);
+    };
+
     const onObjectModified = (opt: { target: unknown }) => {
       const h = handlersRef.current;
       const obj = opt.target;
@@ -149,22 +185,28 @@ export function useCanvasEvents(
       if (objectType === "shape") {
         h.updateShapeDimensions(obj as unknown as MeasuredRect, true);
       }
+      if (objectType === "line") h.updateLineAfterTransform(obj, true);
       h.triggerAutoSave();
     };
 
-    const onObjectScaling = (opt: { target: unknown }) => {
+    const onObjectScaling = (opt: { target: unknown; e?: MouseEvent }) => {
       const h = handlersRef.current;
       const obj = opt.target;
       if (!obj) return;
+      if (opt.e) {
+        h.applyObjectScaleSnapping(obj, opt.e);
+      }
       const objectType = getFabricProp(obj as Rect, "objectType");
       if (objectType === "shape") {
         h.updateShapeDimensions(obj as unknown as MeasuredRect, false);
       }
+      if (objectType === "line") h.updateLineAfterTransform(obj, false);
     };
 
     canvas.on("mouse:down", onMouseDown as never);
     canvas.on("mouse:move", onMouseMove as never);
     canvas.on("mouse:up", onMouseUp as never);
+    canvas.on("object:moving", onObjectMoving as never);
     canvas.on("object:modified", onObjectModified as never);
     canvas.on("object:scaling", onObjectScaling as never);
 
@@ -172,6 +214,7 @@ export function useCanvasEvents(
       canvas.off("mouse:down", onMouseDown as never);
       canvas.off("mouse:move", onMouseMove as never);
       canvas.off("mouse:up", onMouseUp as never);
+      canvas.off("object:moving", onObjectMoving as never);
       canvas.off("object:modified", onObjectModified as never);
       canvas.off("object:scaling", onObjectScaling as never);
     };

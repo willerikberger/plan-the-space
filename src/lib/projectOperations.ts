@@ -7,6 +7,7 @@ import type {
   Camera,
   LayerGroup,
   LayerEntry,
+  ViewAidsSettings,
 } from "./types";
 import { usePlannerStore } from "./store";
 import { createProjectRecord, duplicateProjectRecord } from "./projectRecord";
@@ -29,9 +30,19 @@ function toListItem(r: ProjectRecord): ProjectListItem {
 
 function createEmptyProjectData(): SerializedProject {
   return {
-    version: 4,
+    version: 5,
     pixelsPerMeter: null,
     backgroundImage: null,
+    viewAids: {
+      showGrid: true,
+      showRulers: true,
+      snapEnabled: true,
+      gridStepM: 0.5,
+      majorEvery: 5,
+      guideLock: false,
+      guides: [],
+      snapTolerancePx: 10,
+    },
     savedAt: new Date().toISOString(),
     objects: [],
   };
@@ -88,6 +99,7 @@ export interface OpenProjectResult {
   serializedObjects: SerializedObject[];
   camera?: Camera;
   layers?: Record<LayerGroup, LayerEntry[]>;
+  viewAids?: ViewAidsSettings;
 }
 
 /**
@@ -109,6 +121,7 @@ export async function openProject(
   store.loadProject({
     pixelsPerMeter: deserialized.pixelsPerMeter,
     objects: deserialized.objects,
+    viewAids: deserialized.viewAids,
   });
 
   if (deserialized.camera) {
@@ -127,6 +140,7 @@ export async function openProject(
     serializedObjects: deserialized.serializedObjects,
     camera: deserialized.camera ?? undefined,
     layers: deserialized.layers ?? undefined,
+    viewAids: deserialized.viewAids,
   };
 }
 

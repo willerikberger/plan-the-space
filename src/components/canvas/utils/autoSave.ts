@@ -11,6 +11,7 @@ import type {
   Camera,
   LayerGroup,
   LayerEntry,
+  ViewAidsSettings,
 } from "@/lib/types";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 import { usePlannerStore } from "@/lib/store";
@@ -28,6 +29,7 @@ export type SerializeProjectFn = (
   getFabricState: (id: number) => FabricStateResult,
   camera?: Camera | null,
   layers?: Record<LayerGroup, LayerEntry[]> | null,
+  viewAids?: ViewAidsSettings | null,
 ) => SerializedProject;
 
 /** Signature for the saveToIDB function */
@@ -71,6 +73,7 @@ export function scheduleAutoSave(options: ScheduleAutoSaveOptions): void {
         (id) => getFabricState(id),
         s.camera,
         s.layers,
+        s.viewAids,
       );
       // Save to legacy IDB for backward compat
       await saveToIDB(data);
@@ -118,6 +121,7 @@ export function handleBeforeUnload(
     getFabricState,
     s.camera,
     s.layers,
+    s.viewAids,
   );
   // Synchronous best-effort via sendBeacon isn't possible with IDB,
   // but we can try a fire-and-forget save

@@ -10,10 +10,7 @@ test.describe("Keyboard Shortcuts", () => {
     expect(await getObjectCount(page)).toBe(1);
 
     // Click on shape at canvas center to select it
-    const canvas = page.locator(
-      'canvas[aria-label="Floor plan design canvas"]',
-    );
-    await canvas.click({ position: { x: 400, y: 300 } });
+    await canvasClick(page, 400, 300);
     await page.waitForTimeout(200);
 
     await page.keyboard.press("Delete");
@@ -28,10 +25,7 @@ test.describe("Keyboard Shortcuts", () => {
     await page.waitForTimeout(300);
     expect(await getObjectCount(page)).toBe(1);
 
-    const canvas = page.locator(
-      'canvas[aria-label="Floor plan design canvas"]',
-    );
-    await canvas.click({ position: { x: 400, y: 300 } });
+    await canvasClick(page, 400, 300);
     await page.waitForTimeout(200);
 
     await page.keyboard.press("Backspace");
@@ -61,6 +55,8 @@ test.describe("Keyboard Shortcuts", () => {
     await page.waitForTimeout(300);
     expect(await getObjectCount(page)).toBe(1);
 
+    await canvasClick(page, 100, 100);
+    await page.waitForTimeout(100);
     await page.keyboard.press("Meta+z");
     await page.waitForTimeout(500);
     expect(await getObjectCount(page)).toBe(0);
@@ -71,6 +67,8 @@ test.describe("Keyboard Shortcuts", () => {
     await page.waitForTimeout(300);
     expect(await getObjectCount(page)).toBe(1);
 
+    await canvasClick(page, 100, 100);
+    await page.waitForTimeout(100);
     await page.keyboard.press("Meta+z");
     await page.waitForTimeout(500);
     expect(await getObjectCount(page)).toBe(0);
@@ -87,10 +85,7 @@ test.describe("Keyboard Shortcuts", () => {
     await page.waitForTimeout(300);
 
     // Click canvas to focus it
-    const canvas = page.locator(
-      'canvas[aria-label="Floor plan design canvas"]',
-    );
-    await canvas.click({ position: { x: 100, y: 100 } });
+    await canvasClick(page, 100, 100);
     await page.waitForTimeout(200);
 
     await page.keyboard.press("Meta+z");
@@ -112,5 +107,89 @@ test.describe("Keyboard Shortcuts", () => {
 
     // Shape should still exist
     expect(await getObjectCount(page)).toBe(1);
+  });
+
+  test("G toggles grid visibility", async ({ calibratedProject: page }) => {
+    const before = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __PLANNER_STORE__: {
+              getState: () => { viewAids: { showGrid: boolean } };
+            };
+          }
+        ).__PLANNER_STORE__.getState().viewAids.showGrid,
+    );
+
+    await page.keyboard.press("g");
+
+    const after = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __PLANNER_STORE__: {
+              getState: () => { viewAids: { showGrid: boolean } };
+            };
+          }
+        ).__PLANNER_STORE__.getState().viewAids.showGrid,
+    );
+    expect(after).toBe(!before);
+  });
+
+  test("Shift+G toggles snapping", async ({ calibratedProject: page }) => {
+    const before = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __PLANNER_STORE__: {
+              getState: () => { viewAids: { snapEnabled: boolean } };
+            };
+          }
+        ).__PLANNER_STORE__.getState().viewAids.snapEnabled,
+    );
+
+    await page.keyboard.press("Shift+g");
+
+    const after = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __PLANNER_STORE__: {
+              getState: () => { viewAids: { snapEnabled: boolean } };
+            };
+          }
+        ).__PLANNER_STORE__.getState().viewAids.snapEnabled,
+    );
+    expect(after).toBe(!before);
+  });
+
+  test("Alt+G clears guides", async ({ calibratedProject: page }) => {
+    await page.evaluate(() => {
+      (
+        window as unknown as {
+          __PLANNER_STORE__: {
+            getState: () => {
+              addGuide: (axis: "x" | "y", valueM: number) => void;
+            };
+          };
+        }
+      ).__PLANNER_STORE__
+        .getState()
+        .addGuide("x", 2.5);
+    });
+
+    await page.keyboard.press("Alt+g");
+
+    const guidesCount = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __PLANNER_STORE__: {
+              getState: () => { viewAids: { guides: unknown[] } };
+            };
+          }
+        ).__PLANNER_STORE__.getState().viewAids.guides.length,
+    );
+    expect(guidesCount).toBe(0);
   });
 });

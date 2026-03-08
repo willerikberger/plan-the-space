@@ -3,9 +3,19 @@ import { createProjectRecord } from "@/lib/projectRecord";
 
 export function createEmptyProjectData(): SerializedProject {
   return {
-    version: 4,
+    version: 5,
     pixelsPerMeter: null,
     backgroundImage: null,
+    viewAids: {
+      showGrid: true,
+      showRulers: true,
+      snapEnabled: true,
+      gridStepM: 0.5,
+      majorEvery: 5,
+      guideLock: false,
+      guides: [],
+      snapTolerancePx: 10,
+    },
     savedAt: new Date().toISOString(),
     objects: [],
   };

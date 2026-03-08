@@ -322,7 +322,7 @@ describe("serializeProject (extended)", () => {
   it("serializes with null pixelsPerMeter and null backgroundImage", () => {
     const project = serializeProject(null, [], () => null);
 
-    expect(project.version).toBe(4);
+    expect(project.version).toBe(5);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
     expect(project.objects).toHaveLength(0);
@@ -635,7 +635,7 @@ describe("migrateProject (extended)", () => {
     };
 
     const v4 = migrateProject(v2WithId);
-    expect(v4.version).toBe(4);
+    expect(v4.version).toBe(5);
     expect(v4.id).toBe("my-project-key");
     expect(v4.objects).toHaveLength(1);
     expect(v4.backgroundImage).toBe("data:test");
@@ -652,7 +652,7 @@ describe("migrateProject (extended)", () => {
     };
 
     const v4 = migrateProject(v2NoId);
-    expect(v4.version).toBe(4);
+    expect(v4.version).toBe(5);
     expect(v4.id).toBeUndefined();
   });
 
@@ -668,5 +668,42 @@ describe("migrateProject (extended)", () => {
     const v4 = migrateProject(v2);
     expect(v4.savedAt).toBe("2024-12-25T00:00:00.000Z");
     expect(v4.pixelsPerMeter).toBe(123.5);
+  });
+
+  it("adds default viewAids when migrating legacy project", () => {
+    const v2: SerializedProject = {
+      version: 2,
+      pixelsPerMeter: 50,
+      backgroundImage: null,
+      savedAt: "2024-01-01",
+      objects: [],
+    };
+    const migrated = migrateProject(v2);
+    expect(migrated.version).toBe(5);
+    expect(migrated.viewAids).toBeDefined();
+    expect(migrated.viewAids?.gridStepM).toBe(0.5);
+    expect(migrated.viewAids?.majorEvery).toBe(5);
+  });
+});
+
+describe("viewAids serialization", () => {
+  it("persists viewAids through serialize -> deserialize", () => {
+    const project = serializeProject(50, [], () => null, null, null, {
+      showGrid: false,
+      showRulers: true,
+      snapEnabled: false,
+      gridStepM: 1,
+      majorEvery: 4,
+      guideLock: true,
+      guides: [{ id: "g1", axis: "x", valueM: 2.5 }],
+      snapTolerancePx: 8,
+    });
+    const result = deserializeProject(project);
+    expect(result.viewAids.showGrid).toBe(false);
+    expect(result.viewAids.snapEnabled).toBe(false);
+    expect(result.viewAids.gridStepM).toBe(1);
+    expect(result.viewAids.majorEvery).toBe(4);
+    expect(result.viewAids.guideLock).toBe(true);
+    expect(result.viewAids.guides).toHaveLength(1);
   });
 });

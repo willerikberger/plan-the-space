@@ -81,6 +81,10 @@ export function useHistory({
         masks: store.layers.masks.map((e) => ({ ...e })),
         content: store.layers.content.map((e) => ({ ...e })),
       },
+      viewAids: {
+        ...store.viewAids,
+        guides: store.viewAids.guides.map((guide) => ({ ...guide })),
+      },
     };
 
     // Capture Fabric state for each object
@@ -101,6 +105,22 @@ export function useHistory({
       fabricSnapshots,
       timestamp: Date.now(),
     };
+
+    // Avoid no-op history entries when multiple callbacks capture the same
+    // state in quick succession (e.g. add flows + Fabric modified events).
+    const current = manager.getCurrentSnapshot();
+    if (current) {
+      const sameStore =
+        JSON.stringify(current.storeSnapshot) ===
+        JSON.stringify(snapshot.storeSnapshot);
+      const sameFabric =
+        JSON.stringify(current.fabricSnapshots) ===
+        JSON.stringify(snapshot.fabricSnapshots);
+      if (sameStore && sameFabric) {
+        syncHistoryState();
+        return;
+      }
+    }
 
     manager.push(snapshot);
     syncHistoryState();

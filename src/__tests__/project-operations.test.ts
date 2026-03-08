@@ -40,7 +40,7 @@ describe("createProject", () => {
     const record = await adapter.loadProjectRecord(id);
     expect(record).not.toBeNull();
     expect(record!.name).toBe("My Garden");
-    expect(record!.projectData.version).toBe(4);
+    expect(record!.projectData.version).toBe(5);
     expect(record!.projectData.objects).toEqual([]);
 
     const store = usePlannerStore.getState();
@@ -213,7 +213,7 @@ describe("importJsonAsProject", () => {
 
     const record = await adapter.loadProjectRecord(id);
     expect(record!.name).toBe("my-floor-plan (Imported)");
-    expect(record!.projectData.version).toBe(4); // migrated
+    expect(record!.projectData.version).toBe(5); // migrated
 
     expect(usePlannerStore.getState().projects).toHaveLength(1);
   });

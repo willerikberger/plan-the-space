@@ -26,7 +26,7 @@ export class CanvasInteraction {
 
   async getCanvasBBox() {
     const canvas = this.page.locator(
-      'canvas[aria-label="Floor plan design canvas"]',
+      'canvas[data-fabric="main"][aria-label="Floor plan design canvas"]',
     );
     return canvas.boundingBox();
   }

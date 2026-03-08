@@ -128,6 +128,7 @@ export default function PlannerApp() {
               result.serializedObjects,
               result.camera,
               result.layers,
+              result.viewAids,
             )
             .then(() => handle.setLoadingProject(false));
       } else {

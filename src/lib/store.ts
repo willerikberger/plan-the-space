@@ -16,9 +16,16 @@ import type {
   LayerVisibility,
   ProjectListItem,
   Camera,
+  ViewAidsSlice,
+  GuideAxis,
 } from "./types";
 import { canTransitionMode, layerGroupForType } from "./types";
-import { SHAPE_COLORS, LINE_COLORS, DEFAULTS } from "./constants";
+import {
+  SHAPE_COLORS,
+  LINE_COLORS,
+  DEFAULTS,
+  VIEW_AIDS_DEFAULTS,
+} from "./constants";
 
 // ============================================
 // Slice creator type
@@ -55,6 +62,30 @@ const initialUIState = {
   autoSaveEnabled: true,
   statusMessage: "Load an image to get started",
 };
+
+const initialViewAidsState = {
+  viewAids: {
+    showGrid: VIEW_AIDS_DEFAULTS.showGrid,
+    showRulers: VIEW_AIDS_DEFAULTS.showRulers,
+    snapEnabled: VIEW_AIDS_DEFAULTS.snapEnabled,
+    gridStepM: VIEW_AIDS_DEFAULTS.gridStepM,
+    majorEvery: VIEW_AIDS_DEFAULTS.majorEvery,
+    guideLock: VIEW_AIDS_DEFAULTS.guideLock,
+    guides: [...VIEW_AIDS_DEFAULTS.guides],
+    snapTolerancePx: VIEW_AIDS_DEFAULTS.snapTolerancePx,
+  },
+};
+
+function createGuideId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    "randomUUID" in crypto &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `guide-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+}
 
 // ============================================
 // Canvas slice — calibration, mode, scale
@@ -204,6 +235,106 @@ const createUISlice: StoreSliceCreator<UISlice> = (set) => ({
 const createHistorySlice: StoreSliceCreator<HistorySlice> = (set) => ({
   historyState: initialHistoryState,
   setHistoryState: (historyState) => set({ historyState }),
+});
+
+// ============================================
+// View aids slice
+// ============================================
+const createViewAidsSlice: StoreSliceCreator<ViewAidsSlice> = (set) => ({
+  ...initialViewAidsState,
+
+  setViewAids: (partial) =>
+    set((state) => ({
+      viewAids: { ...state.viewAids, ...partial },
+    })),
+
+  toggleGrid: () =>
+    set((state) => ({
+      viewAids: { ...state.viewAids, showGrid: !state.viewAids.showGrid },
+    })),
+
+  toggleRulers: () =>
+    set((state) => ({
+      viewAids: { ...state.viewAids, showRulers: !state.viewAids.showRulers },
+    })),
+
+  toggleSnap: () =>
+    set((state) => ({
+      viewAids: { ...state.viewAids, snapEnabled: !state.viewAids.snapEnabled },
+    })),
+
+  setGridStepM: (stepM) =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        gridStepM: Number.isFinite(stepM)
+          ? Math.max(0.1, Math.min(10, stepM))
+          : state.viewAids.gridStepM,
+      },
+    })),
+
+  setMajorEvery: (majorEvery) =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        majorEvery: Number.isFinite(majorEvery)
+          ? Math.max(1, Math.min(20, Math.round(majorEvery)))
+          : state.viewAids.majorEvery,
+      },
+    })),
+
+  setGuideLock: (locked) =>
+    set((state) => ({
+      viewAids: { ...state.viewAids, guideLock: locked },
+    })),
+
+  addGuide: (axis: GuideAxis, valueM: number, id?: string) => {
+    const guideId = id ?? createGuideId();
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        guides: [
+          ...state.viewAids.guides,
+          { id: guideId, axis, valueM: Number(valueM) },
+        ],
+      },
+    }));
+    return guideId;
+  },
+
+  updateGuide: (id: string, valueM: number) =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        guides: state.viewAids.guides.map((guide) =>
+          guide.id === id ? { ...guide, valueM: Number(valueM) } : guide,
+        ),
+      },
+    })),
+
+  removeGuide: (id: string) =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        guides: state.viewAids.guides.filter((guide) => guide.id !== id),
+      },
+    })),
+
+  clearGuides: () =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        guides: [],
+      },
+    })),
+
+  replaceGuides: (guides) =>
+    set((state) => ({
+      viewAids: {
+        ...state.viewAids,
+        guides: [...guides],
+      },
+    })),
 });
 
 // ============================================
@@ -470,11 +601,12 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
   ...createObjectsSlice(...a),
   ...createUISlice(...a),
   ...createHistorySlice(...a),
+  ...createViewAidsSlice(...a),
   ...createLayerSlice(...a),
   ...createProjectSlice(...a),
 
   // Cross-slice actions
-  loadProject: ({ pixelsPerMeter, objects }) => {
+  loadProject: ({ pixelsPerMeter, objects, viewAids }) => {
     const [set] = a;
     const map = new Map<number, PlannerObject>();
     let maxId = 0;
@@ -487,6 +619,9 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
       objects: map,
       objectIdCounter: maxId,
       mode: "normal",
+      viewAids: viewAids
+        ? { ...initialViewAidsState.viewAids, ...viewAids }
+        : { ...initialViewAidsState.viewAids },
     });
   },
 
@@ -496,6 +631,7 @@ export const usePlannerStore = create<PlannerStore>()((...a) => ({
       ...initialCanvasState,
       ...initialObjectsState,
       ...initialUIState,
+      ...initialViewAidsState,
       historyState: initialHistoryState,
       layers: { background: [], masks: [], content: [] },
       layerVisibility: { ...allVisible },

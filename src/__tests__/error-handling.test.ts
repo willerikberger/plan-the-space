@@ -412,7 +412,7 @@ describe("serializeProject with edge cases", () => {
 
   it("serializes project with empty objects array", () => {
     const project = serializeProject(null, [], () => null);
-    expect(project.version).toBe(4);
+    expect(project.version).toBe(5);
     expect(project.objects).toHaveLength(0);
     expect(project.pixelsPerMeter).toBeNull();
     expect(project.backgroundImage).toBeNull();
@@ -429,7 +429,7 @@ describe("migrateProject edge cases", () => {
       objects: [],
     };
     const v4 = migrateProject(v2);
-    expect(v4.version).toBe(4);
+    expect(v4.version).toBe(5);
     expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
   });
 
@@ -442,7 +442,7 @@ describe("migrateProject edge cases", () => {
       objects: [],
     } as SerializedProject;
     const v4 = migrateProject(v1Data);
-    expect(v4.version).toBe(4);
+    expect(v4.version).toBe(5);
     expect(v4.metadata?.exportedFrom).toBe("plan-the-space");
   });
 });
@@ -502,7 +502,7 @@ describe("importProjectFromFile error handling", () => {
       type: "application/json",
     });
     const result = await importProjectFromFile(file);
-    expect(result.version).toBe(4);
+    expect(result.version).toBe(5);
     expect(result.pixelsPerMeter).toBe(50);
   });
 });
@@ -783,7 +783,7 @@ describe("IndexedDB error edge cases", () => {
     await saveProject(project);
     const loaded = await loadProject();
     expect(loaded).not.toBeNull();
-    expect(loaded!.version).toBe(4);
+    expect(loaded!.version).toBe(5);
     expect(loaded!.pixelsPerMeter).toBe(75);
   });
 

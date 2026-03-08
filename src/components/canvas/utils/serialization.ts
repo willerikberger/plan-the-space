@@ -10,6 +10,7 @@ import type {
   SerializedProject,
   SerializedProjectV3,
   SerializedProjectV4,
+  SerializedProjectV5,
   SerializedObject,
   SerializedObjectV4,
   SerializedShapeV4,
@@ -26,8 +27,11 @@ import type {
   BackgroundImageObject,
   OverlayImageObject,
   Camera,
+  ViewAidsSettings,
+  SerializedViewAids,
 } from "@/lib/types";
 import { layerGroupForType } from "@/lib/types";
+import { VIEW_AIDS_DEFAULTS } from "@/lib/constants";
 
 /** Validate that project data has the expected structure */
 export function validateProjectData(data: unknown): data is SerializedProject {
@@ -39,6 +43,65 @@ export function validateProjectData(data: unknown): data is SerializedProject {
   if (d.pixelsPerMeter !== null && typeof d.pixelsPerMeter !== "number")
     return false;
   return true;
+}
+
+/** Return normalized view-aid settings with defaults for missing/invalid fields. */
+export function normalizeViewAids(
+  input?: Partial<SerializedViewAids> | null,
+): ViewAidsSettings {
+  const gridStep =
+    typeof input?.gridStepM === "number" && Number.isFinite(input.gridStepM)
+      ? input.gridStepM
+      : VIEW_AIDS_DEFAULTS.gridStepM;
+  const majorEvery =
+    typeof input?.majorEvery === "number" && Number.isFinite(input.majorEvery)
+      ? Math.round(input.majorEvery)
+      : VIEW_AIDS_DEFAULTS.majorEvery;
+  const snapTolerance =
+    typeof input?.snapTolerancePx === "number" &&
+    Number.isFinite(input.snapTolerancePx)
+      ? input.snapTolerancePx
+      : VIEW_AIDS_DEFAULTS.snapTolerancePx;
+
+  const guides = Array.isArray(input?.guides)
+    ? input.guides
+        .filter(
+          (guide) =>
+            guide &&
+            typeof guide.id === "string" &&
+            (guide.axis === "x" || guide.axis === "y") &&
+            typeof guide.valueM === "number" &&
+            Number.isFinite(guide.valueM),
+        )
+        .map((guide) => ({
+          id: guide.id,
+          axis: guide.axis,
+          valueM: guide.valueM,
+        }))
+    : [];
+
+  return {
+    showGrid:
+      typeof input?.showGrid === "boolean"
+        ? input.showGrid
+        : VIEW_AIDS_DEFAULTS.showGrid,
+    showRulers:
+      typeof input?.showRulers === "boolean"
+        ? input.showRulers
+        : VIEW_AIDS_DEFAULTS.showRulers,
+    snapEnabled:
+      typeof input?.snapEnabled === "boolean"
+        ? input.snapEnabled
+        : VIEW_AIDS_DEFAULTS.snapEnabled,
+    gridStepM: Math.max(0.1, Math.min(10, gridStep)),
+    majorEvery: Math.max(1, Math.min(20, majorEvery)),
+    guideLock:
+      typeof input?.guideLock === "boolean"
+        ? input.guideLock
+        : VIEW_AIDS_DEFAULTS.guideLock,
+    guides,
+    snapTolerancePx: Math.max(2, Math.min(40, snapTolerance)),
+  };
 }
 
 /** Serialize a PlannerObject + its Fabric state into a plain JSON object */
@@ -159,6 +222,7 @@ export function serializeProject(
   } | null,
   camera?: Camera | null,
   layers?: Record<LayerGroup, LayerEntry[]> | null,
+  viewAids?: ViewAidsSettings | null,
 ): SerializedProject {
   const serializedObjects: SerializedObject[] = [];
 
@@ -198,15 +262,16 @@ export function serializeProject(
     : undefined;
 
   return {
-    version: 4,
+    version: 5,
     pixelsPerMeter,
     backgroundImage: null, // background is now in objects array
     ...(serializedCamera ? { camera: serializedCamera } : {}),
     ...(serializedLayers ? { layers: serializedLayers } : {}),
+    ...(viewAids ? { viewAids } : {}),
     savedAt: new Date().toISOString(),
     objects: serializedObjects,
     metadata: { appVersion: "1.0.0", exportedFrom: "plan-the-space" },
-  } as SerializedProjectV4;
+  } as SerializedProjectV5;
 }
 
 /** Deserialize a project JSON into store-ready objects */
@@ -214,6 +279,7 @@ export function deserializeProject(data: SerializedProject): {
   pixelsPerMeter: number | null;
   camera?: Camera;
   layers?: Record<LayerGroup, LayerEntry[]>;
+  viewAids: ViewAidsSettings;
   objects: PlannerObject[];
   serializedObjects: SerializedObject[];
 } {
@@ -316,6 +382,7 @@ export function deserializeProject(data: SerializedProject): {
 
   // Extract camera from v4 projects
   const v4Data = data as Partial<SerializedProjectV4>;
+  const v5Data = data as Partial<SerializedProjectV5>;
   const camera: Camera | undefined = v4Data.camera
     ? {
         pixelsPerMeter: v4Data.camera.pixelsPerMeter,
@@ -349,10 +416,13 @@ export function deserializeProject(data: SerializedProject): {
     layers = reconstructLayersFromObjects(objects);
   }
 
+  const viewAids = normalizeViewAids(v5Data.viewAids);
+
   return {
     pixelsPerMeter: data.pixelsPerMeter,
     ...(camera ? { camera } : {}),
     ...(layers ? { layers } : {}),
+    viewAids,
     objects,
     serializedObjects,
   };
@@ -458,8 +528,28 @@ export function migrateV3toV4(data: SerializedProject): SerializedProjectV4 {
   } as SerializedProjectV4;
 }
 
-/** Full migration chain: v2 → v3 → v4. Already-current data passes through unchanged. */
-export function migrateProject(data: SerializedProject): SerializedProjectV4 {
+/** Migrate a v4 project to v5 format by introducing persisted view-aid settings. */
+export function migrateV4toV5(data: SerializedProject): SerializedProjectV5 {
+  if (data.version >= 5) {
+    return data as SerializedProjectV5;
+  }
+  const v4 = data as SerializedProjectV4;
+  const { id, ...rest } = v4;
+  return {
+    ...rest,
+    version: 5,
+    viewAids: normalizeViewAids(undefined),
+    metadata: {
+      ...(v4.metadata ?? {}),
+      exportedFrom: "plan-the-space",
+    },
+    ...(id ? { id } : {}),
+  } as SerializedProjectV5;
+}
+
+/** Full migration chain: v2 → v3 → v4 → v5. Already-current data passes through unchanged. */
+export function migrateProject(data: SerializedProject): SerializedProjectV5 {
   const v3 = migrateV2toV3(data);
-  return migrateV3toV4(v3);
+  const v4 = migrateV3toV4(v3);
+  return migrateV4toV5(v4);
 }

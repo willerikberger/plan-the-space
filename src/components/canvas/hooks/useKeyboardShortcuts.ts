@@ -20,6 +20,9 @@ export function useKeyboardShortcuts(
     deleteSelected: () => void;
     undo: () => Promise<void>;
     redo: () => Promise<void>;
+    toggleGrid: () => void;
+    toggleSnap: () => void;
+    clearGuides: () => void;
   },
 ) {
   // Register a single stable keydown listener once on mount.
@@ -80,6 +83,28 @@ export function useKeyboardShortcuts(
       ) {
         e.preventDefault();
         actionsRef.current.redo();
+      }
+
+      // Grid/guides shortcuts:
+      // G = toggle grid
+      // Shift+G = toggle snapping
+      // Alt+G = clear guides
+      if (
+        (e.key === "g" || e.key === "G") &&
+        !isInputFocused &&
+        !e.metaKey &&
+        !e.ctrlKey
+      ) {
+        e.preventDefault();
+        if (e.altKey) {
+          actionsRef.current.clearGuides();
+          return;
+        }
+        if (e.shiftKey) {
+          actionsRef.current.toggleSnap();
+          return;
+        }
+        actionsRef.current.toggleGrid();
       }
     };
 
