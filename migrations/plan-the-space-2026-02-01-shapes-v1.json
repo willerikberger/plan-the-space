@@ -1,0 +1,381 @@
+{
+  "format": "plan-the-space-shapes",
+  "version": 1,
+  "source": {
+    "filename": "plan-the-space-2026-02-01-v4-fidelity.json",
+    "exportedAt": "2026-02-01T22:50:23.512Z",
+    "projectVersion": 4,
+    "pixelsPerMeter": 62.080026475405084
+  },
+  "count": 14,
+  "units": {
+    "distance": "meters",
+    "coordinates": "world-meters"
+  },
+  "shapes": [
+    {
+      "id": 10,
+      "name": "Pergola 3x4",
+      "color": "rgba(76, 175, 80, 0.6)",
+      "widthM": 4,
+      "heightM": 3,
+      "worldX": 8.95523907727437,
+      "worldY": 9.886618152855139,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 0
+      },
+      "fabric": {
+        "left": 432.59010621190527,
+        "top": 519.4024742677859,
+        "width": 186.24007942621526,
+        "height": 248.32010590162034,
+        "baseWidthPx": 186.24007942621526,
+        "baseHeightPx": 248.32010590162034,
+        "scaleX": 1.3246490570547602,
+        "scaleY": 0.7599790767733067,
+        "widthPx": 246.7027455977397,
+        "heightPx": 188.71808482736316
+      }
+    },
+    {
+      "id": 21,
+      "name": "Carport",
+      "color": "rgba(96, 125, 139, 0.6)",
+      "widthM": 3,
+      "heightM": 5.5,
+      "worldX": 19.289250359583857,
+      "worldY": 11.275900343810294,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 9
+      },
+      "fabric": {
+        "left": 1104.3571333005752,
+        "top": 529.2881190704084,
+        "width": 186.24007942621526,
+        "height": 341.44014561472795,
+        "baseWidthPx": 186.24007942621526,
+        "baseHeightPx": 341.44014561472795,
+        "scaleX": 1,
+        "scaleY": 1,
+        "widthPx": 186.24007942621526,
+        "heightPx": 341.44014561472795
+      }
+    },
+    {
+      "id": 22,
+      "name": "Cabin",
+      "color": "rgba(33, 150, 243, 0.6)",
+      "widthM": 3.3,
+      "heightM": 4.5,
+      "worldX": 15.919453193440686,
+      "worldY": 10.896858473902267,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 10
+      },
+      "fabric": {
+        "left": 887.2455320417358,
+        "top": 536.7535986671926,
+        "width": 235.90410060653932,
+        "height": 329.02414031964696,
+        "baseWidthPx": 235.90410060653932,
+        "baseHeightPx": 329.02414031964696,
+        "scaleX": 0.8565730177751167,
+        "scaleY": 0.8493216561900948,
+        "widthPx": 202.06908736206813,
+        "heightPx": 279.44732778280473
+      }
+    },
+    {
+      "id": 23,
+      "name": "Deck",
+      "color": "rgba(121, 85, 72, 0.6)",
+      "widthM": 6.1,
+      "heightM": 6.3,
+      "worldX": 9.83884967144583,
+      "worldY": 10.949721031425742,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 11
+      },
+      "fabric": {
+        "left": 421.98204066240976,
+        "top": 484.74952759939697,
+        "width": 235.90410060653932,
+        "height": 329.02414031964696,
+        "baseWidthPx": 235.90410060653932,
+        "baseHeightPx": 329.02414031964696,
+        "scaleX": 1.6007691849612902,
+        "scaleY": 1.1853807671398295,
+        "widthPx": 377.62801485695616,
+        "heightPx": 390.01888785962603
+      }
+    },
+    {
+      "id": 24,
+      "name": "Pool",
+      "color": "rgba(33, 150, 243, 0.6)",
+      "widthM": 4,
+      "heightM": 2.3,
+      "worldX": 8.967955878931557,
+      "worldY": 12.781873659689289,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 12
+      },
+      "fabric": {
+        "left": 432.57088544352547,
+        "top": 722.1070247520781,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 1,
+        "scaleY": 1,
+        "widthPx": 248.32010590162034,
+        "heightPx": 142.78406089343167
+      }
+    },
+    {
+      "id": 25,
+      "name": "Shape 26",
+      "color": "rgba(121, 85, 72, 0.6)",
+      "widthM": 5.1,
+      "heightM": 3.5,
+      "worldX": 9.305873273794033,
+      "worldY": 6.056140098487783,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 13
+      },
+      "fabric": {
+        "left": 420.9020133390808,
+        "top": 268.0818192336827,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 1.262941196851303,
+        "scaleY": 1.5111423186054525,
+        "widthPx": 313.61369174963465,
+        "heightPx": 215.76703683840245
+      }
+    },
+    {
+      "id": 26,
+      "name": "Garden",
+      "color": "rgba(76, 175, 80, 0.6)",
+      "widthM": 3,
+      "heightM": 0.6,
+      "worldX": 13.398168214076266,
+      "worldY": 5.438285108333184,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 14
+      },
+      "fabric": {
+        "left": 739.1439798239375,
+        "top": 319.0005338712598,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 0.745929591899741,
+        "scaleY": 0.2606502367060987,
+        "widthPx": 185.22931525569612,
+        "heightPx": 37.21669926973098
+      }
+    },
+    {
+      "id": 27,
+      "name": "Shed",
+      "color": "rgba(96, 125, 139, 0.6)",
+      "widthM": 2,
+      "heightM": 3,
+      "worldX": 16.664797435718384,
+      "worldY": 13.697548746629918,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 15
+      },
+      "fabric": {
+        "left": 973.7534187170621,
+        "top": 758.3284752851621,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 0.4896715638779951,
+        "scaleY": 1.288879346588297,
+        "widthPx": 121.5952945991958,
+        "heightPx": 184.03142710754983
+      }
+    },
+    {
+      "id": 28,
+      "name": "Bin",
+      "color": "rgba(244, 67, 54, 0.6)",
+      "widthM": 0.7,
+      "heightM": 0.8,
+      "worldX": 19.150264994936848,
+      "worldY": 14.82613240562473,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 16
+      },
+      "fabric": {
+        "left": 1166.0877113550669,
+        "top": 895.3687911645604,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 0.18332181728895955,
+        "scaleY": 0.35071002950632335,
+        "widthPx": 45.52249308327193,
+        "heightPx": 50.07580220896809
+      }
+    },
+    {
+      "id": 29,
+      "name": "Bin",
+      "color": "rgba(76, 175, 80, 0.6)",
+      "widthM": 0.8,
+      "heightM": 0.8,
+      "worldX": 18.3252921344723,
+      "worldY": 14.82613240562473,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 17
+      },
+      "fabric": {
+        "left": 1113.2694059910068,
+        "top": 895.3687911645604,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 0.19624037125869437,
+        "scaleY": 0.3507100295063233,
+        "widthPx": 48.73042977313228,
+        "heightPx": 50.075802208968085
+      }
+    },
+    {
+      "id": 31,
+      "name": "Shape 32",
+      "color": "rgba(96, 125, 139, 0.6)",
+      "widthM": 6,
+      "heightM": 2.7,
+      "worldX": 17.928355493482755,
+      "worldY": 9.852770929637042,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 18
+      },
+      "fabric": {
+        "left": 927.9729782711679,
+        "top": 526.9856000702357,
+        "width": 248.32010590162034,
+        "height": 142.78406089343167,
+        "baseWidthPx": 248.32010590162034,
+        "baseHeightPx": 142.78406089343167,
+        "scaleX": 1.4901717664216618,
+        "scaleY": 1.1860522745732975,
+        "widthPx": 370.0396108494317,
+        "heightPx": 169.34936019546686
+      }
+    },
+    {
+      "id": 47,
+      "name": "Cabin",
+      "color": "rgba(255, 235, 59, 0.6)",
+      "widthM": 2.8,
+      "heightM": 3.6,
+      "worldX": 16.287230156728885,
+      "worldY": 10.344290881211629,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 28
+      },
+      "fabric": {
+        "left": 923.7688153775819,
+        "top": 530.4298041191802,
+        "width": 167.61607148359374,
+        "height": 223.4880953114583,
+        "baseWidthPx": 167.61607148359374,
+        "baseHeightPx": 223.4880953114583,
+        "scaleX": 1.0421776765208637,
+        "scaleY": 1,
+        "widthPx": 174.68572792632673,
+        "heightPx": 223.4880953114583
+      }
+    },
+    {
+      "id": 48,
+      "name": "Car",
+      "color": "rgba(244, 67, 54, 0.6)",
+      "widthM": 2.1,
+      "heightM": 4.8,
+      "worldX": 19.457044308558817,
+      "worldY": 11.160304102317289,
+      "angle": 0.381408861631769,
+      "layer": {
+        "group": "content",
+        "zIndex": 29
+      },
+      "fabric": {
+        "left": 1142.7097980092858,
+        "top": 543.8399106044571,
+        "width": 130.36805559835068,
+        "height": 297.9841270819444,
+        "baseWidthPx": 130.36805559835068,
+        "baseHeightPx": 297.9841270819444,
+        "scaleX": 1,
+        "scaleY": 1,
+        "widthPx": 130.36805559835068,
+        "heightPx": 297.9841270819444
+      }
+    },
+    {
+      "id": 49,
+      "name": "Shape 50",
+      "color": "rgba(156, 39, 176, 0.6)",
+      "widthM": 4.8,
+      "heightM": 2.1,
+      "worldX": 31.232116838451084,
+      "worldY": 7.481485496192336,
+      "angle": 0,
+      "layer": {
+        "group": "content",
+        "zIndex": 30
+      },
+      "fabric": {
+        "left": 1789.8985766730161,
+        "top": 399.26678987980404,
+        "width": 297.9841270819444,
+        "height": 130.36805559835068,
+        "baseWidthPx": 297.9841270819444,
+        "baseHeightPx": 130.36805559835068,
+        "scaleX": 1,
+        "scaleY": 1,
+        "widthPx": 297.9841270819444,
+        "heightPx": 130.36805559835068
+      }
+    }
+  ]
+}

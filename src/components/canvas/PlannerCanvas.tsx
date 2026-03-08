@@ -42,6 +42,7 @@ import {
   downloadProjectAsJson,
   importProjectFromFile,
 } from "@/lib/storage/json-export";
+import { importShapesFromFile } from "@/lib/storage/shape-import";
 import {
   getFabricState as getFabricStateUtil,
   clearCanvas as clearCanvasUtil,
@@ -92,6 +93,7 @@ export interface PlannerCanvasHandle {
   clearStorage: () => Promise<void>;
   exportJson: () => void;
   importJson: (file: File) => Promise<void>;
+  importShapesJson: (file: File) => Promise<void>;
   toggleAutoSave: () => void;
   cancelPendingAutoSave: () => void;
   setLoadingProject: (loading: boolean) => void;
@@ -637,6 +639,140 @@ export function PlannerCanvas({
     ],
   );
 
+  const importShapesJson = useCallback(
+    async (file: File) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+
+      const bundle = await importShapesFromFile(file);
+      const store = usePlannerStore.getState();
+
+      if (!store.pixelsPerMeter && bundle.source?.pixelsPerMeter) {
+        store.setPixelsPerMeter(bundle.source.pixelsPerMeter);
+      }
+
+      const ppm = usePlannerStore.getState().pixelsPerMeter;
+      if (!ppm) {
+        throw new Error(
+          "No scale is set. Set scale first or import a shape bundle with source.pixelsPerMeter.",
+        );
+      }
+
+      const orderedShapes = [...bundle.shapes].sort((a, b) => {
+        const az = a.layer?.zIndex;
+        const bz = b.layer?.zIndex;
+        if (az == null && bz == null) return 0;
+        if (az == null) return 1;
+        if (bz == null) return -1;
+        return az - bz;
+      });
+
+      const createdIds: number[] = [];
+      const camera = usePlannerStore.getState().camera;
+      const centerX = canvas.getWidth() / 2;
+      const centerY = canvas.getHeight() / 2;
+
+      for (let i = 0; i < orderedShapes.length; i++) {
+        const shape = orderedShapes[i];
+        const beforeId = usePlannerStore.getState().objectIdCounter;
+        const widthPxDefault = shape.widthM * ppm;
+        const heightPxDefault = shape.heightM * ppm;
+
+        if (shape.worldX != null && shape.worldY != null && camera) {
+          shapes.loadShape({
+            left: 0,
+            top: 0,
+            widthM: shape.widthM,
+            heightM: shape.heightM,
+            color: shape.color,
+            name: shape.name,
+            angle: shape.angle ?? 0,
+            worldX: shape.worldX,
+            worldY: shape.worldY,
+          });
+        } else if (shape.worldX != null && shape.worldY != null) {
+          shapes.loadShape({
+            left: (shape.worldX - shape.widthM / 2) * ppm,
+            top: (shape.worldY - shape.heightM / 2) * ppm,
+            width: widthPxDefault,
+            height: heightPxDefault,
+            widthM: shape.widthM,
+            heightM: shape.heightM,
+            color: shape.color,
+            name: shape.name,
+            angle: shape.angle ?? 0,
+            worldX: shape.worldX,
+            worldY: shape.worldY,
+          });
+        } else if (shape.fabric?.left != null && shape.fabric?.top != null) {
+          shapes.loadShape({
+            left: shape.fabric.left,
+            top: shape.fabric.top,
+            width:
+              shape.fabric.width ?? shape.fabric.baseWidthPx ?? widthPxDefault,
+            height:
+              shape.fabric.height ??
+              shape.fabric.baseHeightPx ??
+              heightPxDefault,
+            scaleX: shape.fabric.scaleX,
+            scaleY: shape.fabric.scaleY,
+            widthM: shape.widthM,
+            heightM: shape.heightM,
+            color: shape.color,
+            name: shape.name,
+            angle: shape.angle ?? 0,
+          });
+        } else {
+          // Deterministic stagger near viewport center when no placement data exists.
+          const offset = i * 16;
+          shapes.loadShape({
+            left: centerX - widthPxDefault / 2 + offset,
+            top: centerY - heightPxDefault / 2 + offset,
+            width: widthPxDefault,
+            height: heightPxDefault,
+            widthM: shape.widthM,
+            heightM: shape.heightM,
+            color: shape.color,
+            name: shape.name,
+            angle: shape.angle ?? 0,
+          });
+        }
+
+        createdIds.push(beforeId);
+      }
+
+      if (createdIds.length > 0) {
+        const latest = usePlannerStore.getState();
+        const contentWithoutImported = latest.layers.content.filter(
+          (entry) => !createdIds.includes(entry.objectId),
+        );
+        const maxZ =
+          contentWithoutImported.length > 0
+            ? Math.max(...contentWithoutImported.map((entry) => entry.zIndex))
+            : -1;
+        const importedEntries = createdIds.map((objectId, index) => ({
+          objectId,
+          zIndex: maxZ + index + 1,
+        }));
+
+        usePlannerStore.setState({
+          layers: {
+            ...latest.layers,
+            content: [...contentWithoutImported, ...importedEntries],
+          },
+        });
+        reorderObjects();
+      }
+
+      usePlannerStore
+        .getState()
+        .setStatusMessage(`Imported ${createdIds.length} shapes`);
+      captureSnapshot();
+      triggerAutoSave();
+    },
+    [fabricCanvasRef, shapes, reorderObjects, captureSnapshot, triggerAutoSave],
+  );
+
   const toggleAutoSave = useCallback(() => {
     const store = usePlannerStore.getState();
     const next = !store.autoSaveEnabled;
@@ -798,6 +934,7 @@ export function PlannerCanvas({
     clearStorage,
     exportJson,
     importJson,
+    importShapesJson,
     toggleAutoSave,
     cancelPendingAutoSave: () => cancelAutoSave(autoSaveTimerRef),
     setLoadingProject: (loading: boolean) => {

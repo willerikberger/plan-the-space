@@ -12,7 +12,8 @@ interface StoragePanelProps {
   onLoad: () => void;
   onClear: () => void;
   onExport: () => void;
-  onImport: (file: File) => void;
+  onImport: (file: File) => void | Promise<void>;
+  onImportShapes: (file: File) => void | Promise<void>;
   onToggleAutoSave: () => void;
 }
 
@@ -22,6 +23,7 @@ export function StoragePanel({
   onClear,
   onExport,
   onImport,
+  onImportShapes,
 }: StoragePanelProps) {
   const [storageStatus, setStorageStatus] = useState("No saved data");
 
@@ -88,7 +90,7 @@ export function StoragePanel({
         <label className="text-planner-text-secondary text-xs block mb-1.5">
           File Export/Import
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-2">
           <Button
             variant="secondary"
             size="sm"
@@ -112,6 +114,22 @@ export function StoragePanel({
                 }
               }}
               label="Import JSON"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="w-full" data-testid="import-shapes-btn">
+            <FileInput
+              accept=".json"
+              onChange={async (file) => {
+                try {
+                  await onImportShapes(file);
+                  toast.success("Shapes imported");
+                } catch {
+                  toast.error("Failed to import shapes");
+                }
+              }}
+              label="Import Shapes JSON"
             />
           </div>
         </div>

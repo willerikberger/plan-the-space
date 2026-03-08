@@ -189,6 +189,7 @@ export function Sidebar() {
               onClear={ctx.onClear}
               onExport={ctx.onExport}
               onImport={ctx.onImport}
+              onImportShapes={ctx.onImportShapes}
               onToggleAutoSave={ctx.onToggleAutoSave}
             />
           </>

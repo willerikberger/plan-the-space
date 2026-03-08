@@ -325,6 +325,52 @@ export interface SerializedProjectV4 extends SerializedProjectBase {
 export type SerializedProject = SerializedProjectBase;
 
 // ============================================
+// Shape bundle import/export
+// ============================================
+
+export interface ShapeBundleShape {
+  id?: number;
+  name: string;
+  color: string;
+  widthM: number;
+  heightM: number;
+  worldX?: number | null;
+  worldY?: number | null;
+  angle?: number;
+  layer?: {
+    group?: "content";
+    zIndex?: number | null;
+  };
+  fabric?: {
+    left?: number;
+    top?: number;
+    width?: number;
+    height?: number;
+    baseWidthPx?: number;
+    baseHeightPx?: number;
+    scaleX?: number;
+    scaleY?: number;
+  };
+}
+
+export interface ShapeBundleV1 {
+  format: "plan-the-space-shapes";
+  version: 1;
+  source?: {
+    filename?: string;
+    exportedAt?: string | null;
+    projectVersion?: number | null;
+    pixelsPerMeter?: number | null;
+  };
+  count?: number;
+  units?: {
+    distance?: "meters";
+    coordinates?: string;
+  };
+  shapes: ShapeBundleShape[];
+}
+
+// ============================================
 // Mode transitions
 // ============================================
 

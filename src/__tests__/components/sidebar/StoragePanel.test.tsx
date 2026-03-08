@@ -20,6 +20,7 @@ describe("StoragePanel", () => {
     onClear: vi.fn(),
     onExport: vi.fn(),
     onImport: vi.fn(),
+    onImportShapes: vi.fn(),
     onToggleAutoSave: vi.fn(),
   };
 
@@ -69,6 +70,13 @@ describe("StoragePanel", () => {
     render(<StoragePanel {...defaultProps} />);
     expect(
       screen.getByRole("button", { name: "Import JSON" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders Import Shapes JSON button", () => {
+    render(<StoragePanel {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: "Import Shapes JSON" }),
     ).toBeInTheDocument();
   });
 
@@ -135,15 +143,29 @@ describe("StoragePanel", () => {
   // --------------------------------------------------
   it("calls onImport when a JSON file is selected", () => {
     render(<StoragePanel {...defaultProps} />);
-    // The hidden file input is the <input type="file">
-    const fileInput = document.querySelector(
+    const fileInputs = document.querySelectorAll(
       'input[type="file"]',
-    ) as HTMLInputElement;
-    expect(fileInput).not.toBeNull();
+    ) as NodeListOf<HTMLInputElement>;
+    const fileInput = fileInputs[0];
+    expect(fileInputs.length).toBeGreaterThanOrEqual(2);
     expect(fileInput.accept).toBe(".json");
 
     const file = new File(["{}"], "project.json", { type: "application/json" });
     fireEvent.change(fileInput, { target: { files: [file] } });
     expect(defaultProps.onImport).toHaveBeenCalledWith(file);
+  });
+
+  it("calls onImportShapes when a shapes JSON file is selected", () => {
+    render(<StoragePanel {...defaultProps} />);
+    const fileInputs = document.querySelectorAll(
+      'input[type="file"]',
+    ) as NodeListOf<HTMLInputElement>;
+    const shapeInput = fileInputs[1];
+    expect(fileInputs.length).toBeGreaterThanOrEqual(2);
+    expect(shapeInput.accept).toBe(".json");
+
+    const file = new File(["{}"], "shapes.json", { type: "application/json" });
+    fireEvent.change(shapeInput, { target: { files: [file] } });
+    expect(defaultProps.onImportShapes).toHaveBeenCalledWith(file);
   });
 });

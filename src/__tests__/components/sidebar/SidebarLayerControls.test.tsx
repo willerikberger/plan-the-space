@@ -37,6 +37,7 @@ function makeSidebarCallbacks(
     onClear: vi.fn(),
     onExport: vi.fn(),
     onImport: vi.fn(),
+    onImportShapes: vi.fn(),
     onToggleAutoSave: vi.fn(),
     ...overrides,
   };

@@ -263,6 +263,7 @@ export default function PlannerApp() {
       onClear: handleClearStorage,
       onExport: () => canvasRef.current?.exportJson(),
       onImport: (f) => canvasRef.current?.importJson(f),
+      onImportShapes: (f) => canvasRef.current?.importShapesJson(f),
       onToggleAutoSave: () => canvasRef.current?.toggleAutoSave(),
     }),
     [

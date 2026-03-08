@@ -34,7 +34,8 @@ export interface SidebarCallbacks {
   onLoad: () => void;
   onClear: () => void;
   onExport: () => void;
-  onImport: (file: File) => void;
+  onImport: (file: File) => void | Promise<void>;
+  onImportShapes: (file: File) => void | Promise<void>;
   onToggleAutoSave: () => void;
 }
 
