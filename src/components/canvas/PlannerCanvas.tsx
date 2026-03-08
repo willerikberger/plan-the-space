@@ -708,14 +708,12 @@ export function PlannerCanvas({
           shapes.loadShape({
             left: shape.fabric.left,
             top: shape.fabric.top,
-            width:
-              shape.fabric.width ?? shape.fabric.baseWidthPx ?? widthPxDefault,
-            height:
-              shape.fabric.height ??
-              shape.fabric.baseHeightPx ??
-              heightPxDefault,
-            scaleX: shape.fabric.scaleX,
-            scaleY: shape.fabric.scaleY,
+            // Keep imported shape size tied to real-world dimensions in this project.
+            // Source fabric width/height/scale can come from a different calibration.
+            width: widthPxDefault,
+            height: heightPxDefault,
+            baseWidthPx: widthPxDefault,
+            baseHeightPx: heightPxDefault,
             widthM: shape.widthM,
             heightM: shape.heightM,
             color: shape.color,
